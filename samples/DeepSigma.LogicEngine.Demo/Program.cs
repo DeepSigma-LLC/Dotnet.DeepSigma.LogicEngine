@@ -1,6 +1,8 @@
 using DeepSigma.LogicEngine.Cnf;
 using DeepSigma.LogicEngine.Evaluation;
 using DeepSigma.LogicEngine.Formulas;
+using DeepSigma.LogicEngine.FiniteGroups;
+using DeepSigma.LogicEngine.FiniteSets;
 using DeepSigma.LogicEngine.Fuzzy;
 using DeepSigma.LogicEngine.Probabilistic;
 using DeepSigma.LogicEngine.Reasoning;
@@ -237,6 +239,37 @@ Section("16. Probabilistic SAT (PSAT): coherence and bounds");
         ProbabilityConstraint.Exactly(Formula.Parse("!p"), Rational.Of(1, 2)),
     };
     Console.WriteLine($"  P(p)=3/10 & P(!p)=1/2 coherent? {PsatSolver.IsConsistent(incoherent)}");
+}
+
+Section("17. Finite set logic");
+{
+    var deMorgan = SetFormula.Parse("~(A ∪ B) = ~A ∩ ~B");
+    Console.WriteLine($"  '{deMorgan}' valid? {FiniteSetsSolver.IsValid(deMorgan)}");
+
+    // A ⊆ B forces |A| ≤ |B|, so this is unsatisfiable.
+    var clash = SetFormula.Parse("A subset B & |A| = 3 & |B| = 2");
+    Console.WriteLine($"  '{clash}' satisfiable? {FiniteSetsSolver.IsSatisfiable(clash, universe: 4)}");
+
+    var model = FiniteSetsSolver.FindModel(SetFormula.Parse("x in A & A subset B & |B| = 2"), universe: 3);
+    if (model is not null)
+    {
+        var a = string.Join(",", model.Sets["A"]);
+        var b = string.Join(",", model.Sets["B"]);
+        Console.WriteLine($"  model: x={model.Elements["x"]}, A={{{a}}}, B={{{b}}} (universe {model.Universe})");
+    }
+}
+
+Section("18. Finite group theory (SAT model finding)");
+{
+    Console.Write("  groups up to isomorphism, orders 1..6:");
+    foreach (var order in Enumerable.Range(1, 6))
+    {
+        Console.Write($" {GroupFinder.CountGroupsUpToIsomorphism(order)}");
+    }
+    Console.WriteLine("   (= 1 1 1 2 1 2)");
+
+    var s3 = GroupFinder.FindGroup(6, new GroupSpec { Abelian = false });
+    Console.WriteLine($"  smallest non-abelian group (order 6) found? {s3 is not null}; ≅ S₃? {s3?.IsIsomorphicTo(GroupTables.SymmetricGroup(3))}");
 }
 
 return;

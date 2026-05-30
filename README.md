@@ -1,6 +1,6 @@
 # Dotnet.DeepSigma.LogicEngine
 
-A .NET 10 **multi-logic reasoning engine**. It started as a propositional satisfiability / entailment library and grew into a broad reasoning stack — propositional, SMT, optimization, temporal, modal, fuzzy, and probabilistic — built on a shared SAT/SMT core:
+A .NET 10 **multi-logic reasoning engine**. It started as a propositional satisfiability / entailment library and grew into a broad reasoning stack — propositional, SMT, optimization, temporal, modal, fuzzy, probabilistic, finite-set, and finite-group — built on a shared SAT/SMT core:
 
 - A **formula language** with a text parser, pretty-printer, evaluator, simplifier, and truth tables.
 - Normal-form transformations — **NNF, CNF (classical + Tseitin), DNF**.
@@ -16,10 +16,12 @@ A .NET 10 **multi-logic reasoning engine**. It started as a propositional satisf
 - **Modal logic** — **K / T / B / S4 / S5** validity and satisfiability via bounded Kripke-model construction.
 - **Fuzzy logic** — many-valued **Gödel** and **Łukasiewicz** validity/satisfiability, reduced to linear real arithmetic over the existing LRA stack (exact, [0,1]-valued).
 - **Probabilistic SAT (PSAT)** — coherence checking and exact probability **bounds** for constraints over logical formulas, with no independence assumptions; solved as an exact linear program, and scalably via **column generation** (LP duals + MaxSAT pricing).
+- **Finite set logic** — set algebra (∪ ∩ complement \ Δ, ∅, U), relations (∈, ⊆, ⊂, =, disjoint), **cardinality** bounds, and named-element membership over a bounded universe, reduced to SAT (sets as membership-bit vectors).
+- **Finite group theory** — a SAT **group model finder** (existence, find-a-group, enumeration, and counting groups **up to isomorphism**) over a reusable `GroupTable` algebra in DeepSigma.Mathematics.
 
 Most capabilities follow one pattern — **encode into the SAT/SMT core, solve, decode** — so the heavy machinery (CDCL, DPLL(T), the exact simplex) is shared and the breadth is mostly thin, well-tested front-ends.
 
-Pure managed code; its one dependency, [DeepSigma.Mathematics](https://github.com/DeepSigma-LLC/Dotnet.DeepSigma.Mathematics) (exact-rational arithmetic, a simplex for LRA, an exact LP optimizer with duals for PSAT, and discrete Bayesian-network inference), is also managed. Builds warnings-as-errors and ships with **344 tests** (plus the exact-arithmetic, LP-optimizer, and graphical-model tests in DeepSigma.Mathematics). Correctness is anchored by **differential testing** — each engine is checked against an independent brute-force oracle.
+Pure managed code; its one dependency, [DeepSigma.Mathematics](https://github.com/DeepSigma-LLC/Dotnet.DeepSigma.Mathematics) (exact-rational arithmetic, a simplex for LRA, an exact LP optimizer with duals for PSAT, finite-group `GroupTable` algebra, and discrete Bayesian-network inference), is also managed. Builds warnings-as-errors and ships with **398 tests** (plus the exact-arithmetic, LP-optimizer, group-algebra, and graphical-model tests in DeepSigma.Mathematics). Correctness is anchored by **differential testing** — each engine is checked against an independent brute-force oracle.
 
 ---
 
@@ -46,6 +48,8 @@ Pure managed code; its one dependency, [DeepSigma.Mathematics](https://github.co
 - [Modal logic (K/T/B/S4/S5)](#modal-logic-ktbs4s5)
 - [Fuzzy logic (Gödel / Łukasiewicz)](#fuzzy-logic-gödel--łukasiewicz)
 - [Probabilistic SAT (PSAT)](#probabilistic-sat-psat)
+- [Finite set logic](#finite-set-logic)
+- [Finite group theory](#finite-group-theory)
 - [Worked examples (samples)](#worked-examples-samples)
 - [Operator and syntax reference](#operator-and-syntax-reference)
 - [Performance notes](#performance-notes)
@@ -102,6 +106,8 @@ src/DeepSigma.LogicEngine/        the library
   Modal/           ModalFormula, ModalParser, ModalSolver (K/T/B/S4/S5)
   Fuzzy/           FuzzyFormula, FuzzySolver (Gödel / Łukasiewicz over LRA)
   Probabilistic/   ProbabilityConstraint, PsatSolver (coherence + bounds; column generation)
+  FiniteSets/      SetExpr/ElementExpr/SetFormula, parser/printer, FiniteSetsSolver
+  FiniteGroups/    GroupSpec, GroupFinder (SAT existence/find/enumerate/count-up-to-iso)
 tests/DeepSigma.LogicEngine.Tests/    xUnit v3 test suite (+ DIMACS benchmarks)
 samples/DeepSigma.LogicEngine.Demo/    guided feature walkthrough
 samples/DeepSigma.LogicEngine.Recipes/ N-queens, Sudoku, graph coloring
@@ -124,6 +130,9 @@ using DeepSigma.LogicEngine.Temporal;     // LtlFormula, LtlParser, BoundedModel
 using DeepSigma.LogicEngine.Modal;        // ModalFormula, ModalParser, ModalSolver, ModalSystem
 using DeepSigma.LogicEngine.Fuzzy;        // FuzzyFormula, FuzzySolver, FuzzyLogic
 using DeepSigma.LogicEngine.Probabilistic; // ProbabilityConstraint, PsatSolver
+using DeepSigma.LogicEngine.FiniteSets;   // SetFormula, SetExpr, ElementExpr, FiniteSetsSolver
+using DeepSigma.LogicEngine.FiniteGroups; // GroupFinder, GroupSpec
+using DeepSigma.Mathematics.Algebra;      // GroupTable, GroupTables
 ```
 
 ---
@@ -635,6 +644,50 @@ PsatSolver.IsConsistent(new[]
 
 ---
 
+## Finite set logic
+
+Reason about finite sets over a bounded universe: set algebra (`∪ ∩ \ Δ`, complement, `∅`, `U`), the relations `∈ ⊆ ⊂ =` and `disjoint`, **cardinality** bounds `|S| ⋈ k`, and named-element membership — all Boolean-combined. Each set is encoded as a vector of membership bits over the universe slots, so every question reduces to SAT.
+
+```csharp
+using DeepSigma.LogicEngine.FiniteSets;
+
+// Set identities are valid (the default universe — 2^#setvars — is a complete
+// decision for the cardinality-free fragment).
+FiniteSetsSolver.IsValid(SetFormula.Parse("~(A ∪ B) = ~A ∩ ~B"));            // True (De Morgan)
+FiniteSetsSolver.IsValid(SetFormula.Parse("A <= B & B <= A -> A = B"));      // True (antisymmetry)
+
+// Cardinality reasoning: A ⊆ B forces |A| ≤ |B|.
+FiniteSetsSolver.IsSatisfiable(SetFormula.Parse("A subset B & |A| = 3 & |B| = 2"), universe: 4); // False
+
+// A concrete witness, decoded back to sets and element slots.
+var model = FiniteSetsSolver.FindModel(SetFormula.Parse("x in A & A subset B & |B| = 2"), universe: 3);
+```
+
+Cardinality questions are decided **relative to the universe size** (like bounded model checking) — pass an explicit `universe` to control it. The builder API (`SetExpr`/`ElementExpr` factories and operators) mirrors the parser.
+
+---
+
+## Finite group theory
+
+Find finite groups by SAT: the group axioms are encoded over a one-hot Cayley table (closure, an identity fixed at element 0, associativity, inverses, plus redundant Latin-square constraints), solved by the propositional engine, and decoded into a `GroupTable`. The reusable `GroupTable` algebra — `IsGroup`, `IsAbelian`, `ElementOrder`, `IsCyclic`, and isomorphism via canonical form — lives in DeepSigma.Mathematics.
+
+```csharp
+using DeepSigma.LogicEngine.FiniteGroups;
+using DeepSigma.Mathematics.Algebra;
+
+// How many groups of each order, up to isomorphism? (1, 1, 1, 2, 1, 2, 1, 5, …)
+GroupFinder.CountGroupsUpToIsomorphism(4);   // 2  (ℤ₄ and the Klein four-group)
+GroupFinder.CountGroupsUpToIsomorphism(6);   // 2  (ℤ₆ and S₃)
+
+// The smallest non-abelian group is S₃ (order 6).
+var g = GroupFinder.FindGroup(6, new GroupSpec { Abelian = false });
+bool isS3 = g!.Value.IsIsomorphicTo(GroupTables.SymmetricGroup(3));   // True
+```
+
+Cost scales with the O(n⁶) associativity encoding: existence/find are practical to about order 10; counting up to isomorphism enumerates the labeled groups then deduplicates by canonical form, practical to about order 8.
+
+---
+
 ## Worked examples (samples)
 
 Two runnable console projects:
@@ -690,7 +743,8 @@ The other parsers share these connectives and add their own atoms/operators:
 
 ## Limitations
 
-- **Logics covered:** propositional, SMT (EUF, LRA), MaxSAT, LTL, modal K/T/B/S4/S5, fuzzy (Gödel/Łukasiewicz), and probabilistic (PSAT). No first-order quantifiers; no integer arithmetic (LIA), arrays, bit-vectors, or theory combination (an SMT solve uses one theory); no CTL/QBF/ASP.
+- **Logics covered:** propositional, SMT (EUF, LRA), MaxSAT, LTL, modal K/T/B/S4/S5, fuzzy (Gödel/Łukasiewicz), probabilistic (PSAT), finite-set, and finite-group. No first-order quantifiers; no integer arithmetic (LIA), arrays, bit-vectors, or theory combination (an SMT solve uses one theory); no CTL/QBF/ASP.
+- **Finite-set** cardinality reasoning and **finite-group** model finding are bounded/finite: set cardinality is decided relative to the universe size, and group search scales with an O(n⁶) associativity encoding (existence to ~order 10, isomorphism counting to ~order 8).
 - **Bounded methods** (LTL BMC, modal) are complete only up to their search bound.
 - EUF/LRA theory solvers are **rebuild-per-check** with no incremental push/pop or eager theory propagation — fine for teaching and modest problems, not tuned for large industrial instances.
 - The solvers are **single-threaded** and allocate managed objects; they are not a drop-in replacement for MiniSAT/Z3 on competition benchmarks.
@@ -703,11 +757,11 @@ These are deliberate scope boundaries, not bugs — see the roadmap.
 
 ```bash
 dotnet build                                   # warnings-as-errors, net10.0
-dotnet test                                    # 344 tests
+dotnet test                                    # 398 tests
 dotnet run --project samples/DeepSigma.LogicEngine.Demo
 ```
 
-Correctness rests on **differential testing**: each engine is checked against an independent brute-force oracle — CDCL/DPLL vs the truth-table solver, MaxSAT vs brute-force optimum, weighted counting vs enumeration, the LTL encoder vs a lasso-trace simulator, the modal encoder vs a Kripke-model enumerator, fuzzy validity vs a [0,1]-grid evaluator, and PSAT column generation vs exact possible-world enumeration, plus DIMACS benchmarks with known verdicts and the EUF/LRA conflict-core tests against canonical facts.
+Correctness rests on **differential testing**: each engine is checked against an independent brute-force oracle — CDCL/DPLL vs the truth-table solver, MaxSAT vs brute-force optimum, weighted counting vs enumeration, the LTL encoder vs a lasso-trace simulator, the modal encoder vs a Kripke-model enumerator, fuzzy validity vs a [0,1]-grid evaluator, PSAT column generation vs exact possible-world enumeration, the finite-set encoder vs brute-force interpretation enumeration, and the group finder vs brute-force Cayley-table enumeration, plus DIMACS benchmarks with known verdicts and the EUF/LRA conflict-core tests against canonical facts.
 
 ---
 

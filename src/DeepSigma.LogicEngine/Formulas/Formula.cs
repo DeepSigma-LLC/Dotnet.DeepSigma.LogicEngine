@@ -21,24 +21,35 @@ public abstract record Formula
 
     /// <summary>Big conjunction over a non-empty sequence; empty sequence yields True.</summary>
     public static Formula All(IEnumerable<Formula> formulas)
-    {
-        Formula? acc = null;
-        foreach (var f in formulas)
-        {
-            acc = acc is null ? f : new Conjunction(acc, f);
-        }
-        return acc ?? True;
-    }
+        => Balanced(formulas as IReadOnlyList<Formula> ?? formulas.ToList(), isConjunction: true) ?? True;
 
     /// <summary>Big disjunction over a non-empty sequence; empty sequence yields False.</summary>
     public static Formula Any(IEnumerable<Formula> formulas)
+        => Balanced(formulas as IReadOnlyList<Formula> ?? formulas.ToList(), isConjunction: false) ?? False;
+
+    /// <summary>
+    /// Fold the list into a balanced (depth O(log n)) binary tree of conjunctions or
+    /// disjunctions. Balancing keeps the recursive normal-form transforms from
+    /// overflowing the stack on very large clause sets. Returns null if empty.
+    /// </summary>
+    private static Formula? Balanced(IReadOnlyList<Formula> formulas, bool isConjunction)
     {
-        Formula? acc = null;
-        foreach (var f in formulas)
+        if (formulas.Count == 0)
         {
-            acc = acc is null ? f : new Disjunction(acc, f);
+            return null;
         }
-        return acc ?? False;
+        Formula Fold(int lo, int hi)
+        {
+            if (hi - lo == 1)
+            {
+                return formulas[lo];
+            }
+            var mid = lo + (hi - lo) / 2;
+            var left = Fold(lo, mid);
+            var right = Fold(mid, hi);
+            return isConjunction ? new Conjunction(left, right) : new Disjunction(left, right);
+        }
+        return Fold(0, formulas.Count);
     }
 
     public static Formula Parse(string source) => Parsing.Parser.Parse(source);
