@@ -1,6 +1,7 @@
 using DeepSigma.LogicEngine.Evaluation;
 using DeepSigma.LogicEngine.Formulas;
 using DeepSigma.LogicEngine.Reasoning;
+using DeepSigma.LogicEngine.Smt;
 
 Section("1. Parsing and pretty-printing");
 {
@@ -108,6 +109,38 @@ Section("8. Horn backward chaining proof tree");
     {
         Console.Write(Indent(proof.Render()));
     }
+}
+
+Section("9. SMT (EUF): equality with uninterpreted functions");
+{
+    var valid = SmtFormula.Parse("a = b & b = c -> f(a) = f(c)");
+    Console.WriteLine($"  {valid}");
+    Console.WriteLine($"  valid? {EufSolver.IsValid(valid)}");
+
+    var sat = SmtFormula.Parse("(a = b | c = d) & f(a) != f(b)");
+    var result = EufSolver.Solve(sat);
+    Console.WriteLine($"  {sat}");
+    Console.WriteLine($"  satisfiable? {result.IsSatisfiable}");
+    if (result.Model is not null)
+    {
+        Console.WriteLine($"  true atoms: {{ {string.Join(", ", result.Model.TrueAtoms)} }}");
+    }
+}
+
+Section("10. SMT (EUF): minimal conflict core");
+{
+    var literals = new[]
+    {
+        SmtFormula.Parse("a = b"),
+        SmtFormula.Parse("c = d"),      // irrelevant to the conflict
+        SmtFormula.Parse("b = c"),
+        SmtFormula.Parse("f(a) != f(c)"),
+    };
+    Console.WriteLine($"  literals: {string.Join(", ", literals.Select(l => l.ToString()))}");
+    var core = EufSolver.ConflictCore(literals);
+    Console.WriteLine(core is null
+        ? "  consistent"
+        : $"  inconsistent; minimal core: {{ {string.Join(", ", core)} }}");
 }
 
 return;
