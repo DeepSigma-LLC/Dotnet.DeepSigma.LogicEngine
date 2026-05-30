@@ -89,48 +89,15 @@ public static class Reasoner
     /// across iterations.
     /// </summary>
     public static IEnumerable<Model> EnumerateModels(Formula formula)
-    {
-        var originalVars = Evaluator.Variables(formula);
-        if (originalVars.Count == 0)
-        {
-            if (Evaluator.Evaluate(formula, new Dictionary<string, bool>()))
-            {
-                yield return Model.Empty;
-            }
-            yield break;
-        }
-
-        var prepared = CnfPreparer.Prepare(formula);
-        // Include the original variables in the universe so blocking clauses can
-        // reference variables that simplification removed from the CNF.
-        var solver = new IncrementalCdclSolver(prepared.Cnf, originalVars);
-
-        while (true)
-        {
-            var result = solver.Solve();
-            if (!result.IsSatisfiable || result.Model is null)
-            {
-                yield break;
-            }
-            var model = CnfPreparer.Project(result.Model, originalVars);
-            yield return model;
-
-            var blocking = originalVars
-                .Select(name => model[name] ? Literal.Negative(name) : Literal.Positive(name))
-                .ToList();
-            if (!solver.AddClause(blocking))
-            {
-                yield break;
-            }
-        }
-    }
+        => EnumerateModels(formula, Evaluator.Variables(formula));
 
     /// <summary>
     /// Enumerate the distinct assignments of a <paramref name="projection"/> of the
     /// variables that extend to a model — blocking clauses are added over the
     /// projection only, so two full models that agree on the projection are
     /// reported once. Useful when auxiliary variables should not multiply the
-    /// enumeration (e.g. counting structures up to a symmetry).
+    /// enumeration (e.g. counting structures up to a symmetry). The parameterless
+    /// overload projects on every variable of the formula.
     /// </summary>
     public static IEnumerable<Model> EnumerateModels(Formula formula, IReadOnlySet<string> projection)
     {

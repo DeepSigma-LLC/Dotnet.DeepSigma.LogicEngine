@@ -40,7 +40,7 @@ internal sealed class LiaTheory : ITheory
             {
                 throw new ArgumentException($"Not an arithmetic theory atom: {asserted[i].Atom}");
             }
-            var relation = asserted[i].Value ? atom.Relation : Negate(atom.Relation);
+            var relation = asserted[i].Value ? atom.Relation : atom.Relation.Negate();
             var terms = atom.Terms.Select(t => (t.Variable, t.Coefficient)).ToArray();
             constraints.Add(new Constraint(i, terms, relation, atom.Constant));
         }
@@ -152,15 +152,6 @@ internal sealed class LiaTheory : ITheory
         }
         return quotient;
     }
-
-    private static LinearRelation Negate(LinearRelation relation) => relation switch
-    {
-        LinearRelation.LessOrEqual => LinearRelation.Greater,
-        LinearRelation.Less => LinearRelation.GreaterOrEqual,
-        LinearRelation.GreaterOrEqual => LinearRelation.Less,
-        LinearRelation.Greater => LinearRelation.LessOrEqual,
-        _ => throw new ArgumentException("Equality atoms are split before reaching the theory."),
-    };
 
     private readonly record struct Constraint(
         int Tag,

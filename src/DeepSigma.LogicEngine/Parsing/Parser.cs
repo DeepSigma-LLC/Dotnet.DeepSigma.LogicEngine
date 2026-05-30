@@ -1,4 +1,5 @@
 using DeepSigma.LogicEngine.Formulas;
+using DeepSigma.LogicEngine.Parsing.Infrastructure;
 
 namespace DeepSigma.LogicEngine.Parsing;
 
@@ -11,10 +12,7 @@ public static class Parser
     public static Formula Parse(string source)
     {
         var tokens = Lexer.Tokenize(source);
-        var p = new ParserState(tokens);
-        var result = p.ParseIff();
-        p.Expect(TokenKind.End);
-        return result;
+        return new ParserState(tokens).ParseComplete();
     }
 
     public static bool TryParse(string source, out Formula formula)
@@ -31,78 +29,26 @@ public static class Parser
         }
     }
 
-    private sealed class ParserState
+    private sealed class ParserState : TokenReader<Token, TokenKind>
     {
-        private readonly List<Token> _tokens;
-        private int _pos;
+        public ParserState(List<Token> tokens) : base(tokens, t => t.Kind, t => t.Text) { }
 
-        public ParserState(List<Token> tokens) => _tokens = tokens;
-
-        private Token Peek() => _tokens[_pos];
-        private Token Advance() => _tokens[_pos++];
-
-        public void Expect(TokenKind kind)
+        public Formula ParseComplete()
         {
-            if (Peek().Kind != kind)
-            {
-                throw new FormatException($"Expected {kind} at position {Peek().Position}, got '{Peek().Text}' ({Peek().Kind}).");
-            }
-            Advance();
+            var formula = ParseIff();
+            Expect(TokenKind.End);
+            return formula;
         }
 
-        public Formula ParseIff()
-        {
-            var left = ParseImplies();
-            while (Peek().Kind == TokenKind.Iff)
-            {
-                Advance();
-                var right = ParseImplies();
-                left = new Biconditional(left, right);
-            }
-            return left;
-        }
-
-        private Formula ParseImplies()
-        {
-            var left = ParseOr();
-            if (Peek().Kind == TokenKind.Implies)
-            {
-                Advance();
-                var right = ParseImplies();
-                return new Implication(left, right);
-            }
-            return left;
-        }
-
-        private Formula ParseOr()
-        {
-            var left = ParseAnd();
-            while (Peek().Kind == TokenKind.Or)
-            {
-                Advance();
-                var right = ParseAnd();
-                left = new Disjunction(left, right);
-            }
-            return left;
-        }
-
-        private Formula ParseAnd()
-        {
-            var left = ParseNot();
-            while (Peek().Kind == TokenKind.And)
-            {
-                Advance();
-                var right = ParseNot();
-                left = new Conjunction(left, right);
-            }
-            return left;
-        }
+        private Formula ParseIff() => ConnectiveChain.LeftAssoc(ParseImplies, () => Accept(TokenKind.Iff), (l, r) => new Biconditional(l, r));
+        private Formula ParseImplies() => ConnectiveChain.RightAssoc(ParseOr, () => Accept(TokenKind.Implies), ParseImplies, (l, r) => new Implication(l, r));
+        private Formula ParseOr() => ConnectiveChain.LeftAssoc(ParseAnd, () => Accept(TokenKind.Or), (l, r) => new Disjunction(l, r));
+        private Formula ParseAnd() => ConnectiveChain.LeftAssoc(ParseNot, () => Accept(TokenKind.And), (l, r) => new Conjunction(l, r));
 
         private Formula ParseNot()
         {
-            if (Peek().Kind == TokenKind.Not)
+            if (Accept(TokenKind.Not))
             {
-                Advance();
                 return new Negation(ParseNot());
             }
             return ParseAtom();

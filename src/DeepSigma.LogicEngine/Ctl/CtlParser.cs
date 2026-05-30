@@ -1,3 +1,5 @@
+using DeepSigma.LogicEngine.Parsing.Infrastructure;
+
 namespace DeepSigma.LogicEngine.Ctl;
 
 /// <summary>
@@ -87,32 +89,10 @@ public static class CtlParser
 
         public CtlFormula ParseFormula() => ParseIff();
 
-        private CtlFormula ParseIff()
-        {
-            var left = ParseImplies();
-            while (Accept(Kind.Iff)) { left = new CtlIff(left, ParseImplies()); }
-            return left;
-        }
-
-        private CtlFormula ParseImplies()
-        {
-            var left = ParseOr();
-            return Accept(Kind.Implies) ? new CtlImplies(left, ParseImplies()) : left;
-        }
-
-        private CtlFormula ParseOr()
-        {
-            var left = ParseAnd();
-            while (Accept(Kind.Or)) { left = new CtlOr(left, ParseAnd()); }
-            return left;
-        }
-
-        private CtlFormula ParseAnd()
-        {
-            var left = ParseUnary();
-            while (Accept(Kind.And)) { left = new CtlAnd(left, ParseUnary()); }
-            return left;
-        }
+        private CtlFormula ParseIff() => ConnectiveChain.LeftAssoc(ParseImplies, () => Accept(Kind.Iff), (l, r) => new CtlIff(l, r));
+        private CtlFormula ParseImplies() => ConnectiveChain.RightAssoc(ParseOr, () => Accept(Kind.Implies), ParseImplies, (l, r) => new CtlImplies(l, r));
+        private CtlFormula ParseOr() => ConnectiveChain.LeftAssoc(ParseAnd, () => Accept(Kind.Or), (l, r) => new CtlOr(l, r));
+        private CtlFormula ParseAnd() => ConnectiveChain.LeftAssoc(ParseUnary, () => Accept(Kind.And), (l, r) => new CtlAnd(l, r));
 
         private CtlFormula ParseUnary()
         {

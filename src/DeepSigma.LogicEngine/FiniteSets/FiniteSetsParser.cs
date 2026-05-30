@@ -1,3 +1,5 @@
+using DeepSigma.LogicEngine.Parsing.Infrastructure;
+
 namespace DeepSigma.LogicEngine.FiniteSets;
 
 /// <summary>
@@ -14,10 +16,7 @@ public static class FiniteSetsParser
 {
     public static SetFormula Parse(string source)
     {
-        var state = new State(Tokenize(source));
-        var formula = state.ParseIff();
-        state.Expect(Kind.End);
-        return formula;
+        return new State(Tokenize(source)).ParseComplete();
     }
 
     public static bool TryParse(string source, out SetFormula formula)
@@ -133,76 +132,28 @@ public static class FiniteSetsParser
         _ => Kind.Id,
     };
 
-    private sealed class State
+    private sealed class State : TokenReader<Token, Kind>
     {
-        private readonly List<Token> _tokens;
-        private int _pos;
-
-        public State(List<Token> tokens) => _tokens = tokens;
-
-        private Token Peek(int offset = 0) => _tokens[Math.Min(_pos + offset, _tokens.Count - 1)];
-
-        private Token Advance() => _tokens[_pos++];
-
-        private bool Check(Kind kind) => Peek().Kind == kind;
-
-        private bool Accept(Kind kind)
-        {
-            if (Check(kind)) { _pos++; return true; }
-            return false;
-        }
-
-        public void Expect(Kind kind)
-        {
-            if (!Accept(kind))
-            {
-                throw new FormatException($"Expected {kind} but found '{Peek().Text}'.");
-            }
-        }
+        public State(List<Token> tokens) : base(tokens, t => t.Kind, t => t.Text) { }
 
         // ---- Formula grammar ----
 
-        public SetFormula ParseIff()
+        public SetFormula ParseComplete()
         {
-            var left = ParseImplies();
-            while (Accept(Kind.Iff))
-            {
-                left = SetFormula.Iff(left, ParseImplies());
-            }
-            return left;
+            var formula = ParseIff();
+            Expect(Kind.End);
+            return formula;
         }
 
-        private SetFormula ParseImplies()
-        {
-            var left = ParseOr();
-            if (Accept(Kind.Implies))
-            {
-                return SetFormula.Implies(left, ParseImplies()); // right-associative
-            }
-            return left;
-        }
+        private SetFormula ParseIff() => ConnectiveChain.LeftAssoc(ParseImplies, () => Accept(Kind.Iff), SetFormula.Iff);
+        private SetFormula ParseImplies() => ConnectiveChain.RightAssoc(ParseOr, () => Accept(Kind.Implies), ParseImplies, SetFormula.Implies);
 
-        private SetFormula ParseOr()
-        {
-            // After a complete left operand a '|' is the boolean-or operator; a
-            // cardinality '|…|' only ever begins an operand (handled in ParseAtom).
-            var left = ParseAnd();
-            while (Accept(Kind.Bar))
-            {
-                left = SetFormula.Or(left, ParseAnd());
-            }
-            return left;
-        }
+        // After a complete left operand a '|' is the boolean-or operator; a cardinality
+        // '|…|' only ever begins an operand (handled in ParseAtom).
+        private SetFormula ParseOr() => ConnectiveChain.LeftAssoc(ParseAnd, () => Accept(Kind.Bar), SetFormula.Or);
 
-        private SetFormula ParseAnd()
-        {
-            var left = ParsePrimary();
-            while (Accept(Kind.And))
-            {
-                left = SetFormula.And(left, ParsePrimary());
-            }
-            return left;
-        }
+        // Negation is handled in ParsePrimary, so the And operand is ParsePrimary.
+        private SetFormula ParseAnd() => ConnectiveChain.LeftAssoc(ParsePrimary, () => Accept(Kind.And), SetFormula.And);
 
         private SetFormula ParsePrimary()
         {
@@ -212,7 +163,7 @@ public static class FiniteSetsParser
             }
             if (Check(Kind.LParen))
             {
-                var save = _pos;
+                var save = Position;
                 try
                 {
                     Advance();
@@ -222,7 +173,7 @@ public static class FiniteSetsParser
                 }
                 catch (FormatException)
                 {
-                    _pos = save; // not a grouped formula; reparse as an atom (parenthesized set relation)
+                    Reset(save); // not a grouped formula; reparse as an atom (parenthesized set relation)
                 }
             }
             return ParseAtom();

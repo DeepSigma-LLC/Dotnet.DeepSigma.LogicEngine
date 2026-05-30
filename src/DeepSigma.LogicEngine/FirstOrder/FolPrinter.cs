@@ -1,4 +1,5 @@
 using System.Text;
+using DeepSigma.LogicEngine.Printing.Infrastructure;
 
 namespace DeepSigma.LogicEngine.FirstOrder;
 
@@ -70,23 +71,11 @@ internal static class FolPrinter
     }
 
     private static void WriteOperand(FolFormula f, StringBuilder sb)
-    {
-        if (f is FolPredicate or FolEquals or FolBool or FolNot)
-        {
-            WriteFormula(f, sb);
-        }
-        else
-        {
-            sb.Append('('); WriteFormula(f, sb); sb.Append(')');
-        }
-    }
+        => ParenPrinter.WriteOperand(sb, f, IsAtomic, x => WriteFormula(x, sb));
+
+    private static bool IsAtomic(FolFormula f)
+        => f is FolPredicate or FolEquals or FolBool or FolNot;
 
     private static void WriteBinary(FolFormula l, string op, FolFormula r, StringBuilder sb)
-    {
-        sb.Append('(');
-        WriteFormula(l, sb);
-        sb.Append(' ').Append(op).Append(' ');
-        WriteFormula(r, sb);
-        sb.Append(')');
-    }
+        => ParenPrinter.WriteBinary(sb, l, op, r, x => WriteFormula(x, sb));
 }

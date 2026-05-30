@@ -1,3 +1,5 @@
+using DeepSigma.LogicEngine.Parsing.Infrastructure;
+
 namespace DeepSigma.LogicEngine.Smt;
 
 internal enum SmtTokenKind
@@ -30,11 +32,7 @@ public static class SmtParser
 {
     public static SmtFormula Parse(string source)
     {
-        var tokens = Tokenize(source);
-        var state = new State(tokens);
-        var formula = state.ParseIff();
-        state.Expect(SmtTokenKind.End);
-        return formula;
+        return new State(Tokenize(source)).ParseComplete();
     }
 
     public static bool TryParse(string source, out SmtFormula formula)
@@ -171,74 +169,26 @@ public static class SmtParser
         _ => SmtTokenKind.Identifier,
     };
 
-    private sealed class State
+    private sealed class State : TokenReader<SmtToken, SmtTokenKind>
     {
-        private readonly List<SmtToken> _tokens;
-        private int _pos;
+        public State(List<SmtToken> tokens) : base(tokens, t => t.Kind, t => t.Text) { }
 
-        public State(List<SmtToken> tokens) => _tokens = tokens;
-
-        private SmtToken Peek() => _tokens[_pos];
-        private SmtToken Advance() => _tokens[_pos++];
-
-        public void Expect(SmtTokenKind kind)
+        public SmtFormula ParseComplete()
         {
-            if (Peek().Kind != kind)
-            {
-                throw new FormatException($"Expected {kind} at position {Peek().Position}, got '{Peek().Text}' ({Peek().Kind}).");
-            }
-            Advance();
+            var formula = ParseIff();
+            Expect(SmtTokenKind.End);
+            return formula;
         }
 
-        public SmtFormula ParseIff()
-        {
-            var left = ParseImplies();
-            while (Peek().Kind == SmtTokenKind.Iff)
-            {
-                Advance();
-                left = new SmtIff(left, ParseImplies());
-            }
-            return left;
-        }
-
-        private SmtFormula ParseImplies()
-        {
-            var left = ParseOr();
-            if (Peek().Kind == SmtTokenKind.Implies)
-            {
-                Advance();
-                return new SmtImplies(left, ParseImplies());
-            }
-            return left;
-        }
-
-        private SmtFormula ParseOr()
-        {
-            var left = ParseAnd();
-            while (Peek().Kind == SmtTokenKind.Or)
-            {
-                Advance();
-                left = new SmtOr(left, ParseAnd());
-            }
-            return left;
-        }
-
-        private SmtFormula ParseAnd()
-        {
-            var left = ParseNot();
-            while (Peek().Kind == SmtTokenKind.And)
-            {
-                Advance();
-                left = new SmtAnd(left, ParseNot());
-            }
-            return left;
-        }
+        private SmtFormula ParseIff() => ConnectiveChain.LeftAssoc(ParseImplies, () => Accept(SmtTokenKind.Iff), (l, r) => new SmtIff(l, r));
+        private SmtFormula ParseImplies() => ConnectiveChain.RightAssoc(ParseOr, () => Accept(SmtTokenKind.Implies), ParseImplies, (l, r) => new SmtImplies(l, r));
+        private SmtFormula ParseOr() => ConnectiveChain.LeftAssoc(ParseAnd, () => Accept(SmtTokenKind.Or), (l, r) => new SmtOr(l, r));
+        private SmtFormula ParseAnd() => ConnectiveChain.LeftAssoc(ParseNot, () => Accept(SmtTokenKind.And), (l, r) => new SmtAnd(l, r));
 
         private SmtFormula ParseNot()
         {
-            if (Peek().Kind == SmtTokenKind.Not)
+            if (Accept(SmtTokenKind.Not))
             {
-                Advance();
                 return new SmtNot(ParseNot());
             }
             return ParsePrimary();

@@ -1,4 +1,5 @@
 using System.Text;
+using DeepSigma.LogicEngine.Printing.Infrastructure;
 
 namespace DeepSigma.LogicEngine.FiniteSets;
 
@@ -38,21 +39,13 @@ internal static class FiniteSetsPrinter
     }
 
     private static void WriteSetOperand(SetExpr e, StringBuilder sb)
-    {
-        if (e is SetVar or SetConst or SetCompl)
-        {
-            WriteSet(e, sb);
-        }
-        else
-        {
-            sb.Append('('); WriteSet(e, sb); sb.Append(')');
-        }
-    }
+        => ParenPrinter.WriteOperand(sb, e, IsAtomicSet, x => WriteSet(x, sb));
+
+    private static bool IsAtomicSet(SetExpr e)
+        => e is SetVar or SetConst or SetCompl;
 
     private static void WriteSetBinary(SetExpr l, string op, SetExpr r, StringBuilder sb)
-    {
-        sb.Append('('); WriteSet(l, sb); sb.Append(' ').Append(op).Append(' '); WriteSet(r, sb); sb.Append(')');
-    }
+        => ParenPrinter.WriteBinary(sb, l, op, r, x => WriteSet(x, sb));
 
     private static void WriteFormula(SetFormula f, StringBuilder sb)
     {
@@ -73,21 +66,13 @@ internal static class FiniteSetsPrinter
     }
 
     private static void WriteFormulaOperand(SetFormula f, StringBuilder sb)
-    {
-        if (f is MemberRel or SubsetRel or EqualRel or DisjointRel or CardRel or SetNot)
-        {
-            WriteFormula(f, sb);
-        }
-        else
-        {
-            sb.Append('('); WriteFormula(f, sb); sb.Append(')');
-        }
-    }
+        => ParenPrinter.WriteOperand(sb, f, IsAtomicFormula, x => WriteFormula(x, sb));
+
+    private static bool IsAtomicFormula(SetFormula f)
+        => f is MemberRel or SubsetRel or EqualRel or DisjointRel or CardRel or SetNot;
 
     private static void WriteFormulaBinary(SetFormula l, string op, SetFormula r, StringBuilder sb)
-    {
-        sb.Append('('); WriteFormula(l, sb); sb.Append(' ').Append(op).Append(' '); WriteFormula(r, sb); sb.Append(')');
-    }
+        => ParenPrinter.WriteBinary(sb, l, op, r, x => WriteFormula(x, sb));
 
     private static string OpText(CardOp op) => op switch
     {

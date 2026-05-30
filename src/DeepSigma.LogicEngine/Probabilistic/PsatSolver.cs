@@ -2,6 +2,7 @@ using DeepSigma.LogicEngine.Evaluation;
 using DeepSigma.LogicEngine.Formulas;
 using DeepSigma.Mathematics.Algebra;
 using DeepSigma.Mathematics.Optimization.Exact;
+using static DeepSigma.LogicEngine.Probabilistic.RationalVectors;
 
 namespace DeepSigma.LogicEngine.Probabilistic;
 
@@ -136,6 +137,4 @@ public static class PsatSolver
         return worlds;
     }
 
-    private static Rational[] Zeros(int n) => Enumerable.Repeat(Rational.Zero, n).ToArray();
-    private static Rational[] Ones(int n) => Enumerable.Repeat(Rational.One, n).ToArray();
 }

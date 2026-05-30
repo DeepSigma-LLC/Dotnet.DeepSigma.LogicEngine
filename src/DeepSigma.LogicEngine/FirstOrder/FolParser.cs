@@ -1,3 +1,5 @@
+using DeepSigma.LogicEngine.Parsing.Infrastructure;
+
 namespace DeepSigma.LogicEngine.FirstOrder;
 
 /// <summary>
@@ -111,45 +113,10 @@ public static class FolParser
 
         public FolFormula ParseFormula() => ParseIff();
 
-        private FolFormula ParseIff()
-        {
-            var left = ParseImplies();
-            while (Accept(Kind.Iff))
-            {
-                left = new FolIff(left, ParseImplies());
-            }
-            return left;
-        }
-
-        private FolFormula ParseImplies()
-        {
-            var left = ParseOr();
-            if (Accept(Kind.Implies))
-            {
-                return new FolImplies(left, ParseImplies());
-            }
-            return left;
-        }
-
-        private FolFormula ParseOr()
-        {
-            var left = ParseAnd();
-            while (Accept(Kind.Or))
-            {
-                left = new FolOr(left, ParseAnd());
-            }
-            return left;
-        }
-
-        private FolFormula ParseAnd()
-        {
-            var left = ParseUnary();
-            while (Accept(Kind.And))
-            {
-                left = new FolAnd(left, ParseUnary());
-            }
-            return left;
-        }
+        private FolFormula ParseIff() => ConnectiveChain.LeftAssoc(ParseImplies, () => Accept(Kind.Iff), (l, r) => new FolIff(l, r));
+        private FolFormula ParseImplies() => ConnectiveChain.RightAssoc(ParseOr, () => Accept(Kind.Implies), ParseImplies, (l, r) => new FolImplies(l, r));
+        private FolFormula ParseOr() => ConnectiveChain.LeftAssoc(ParseAnd, () => Accept(Kind.Or), (l, r) => new FolOr(l, r));
+        private FolFormula ParseAnd() => ConnectiveChain.LeftAssoc(ParseUnary, () => Accept(Kind.And), (l, r) => new FolAnd(l, r));
 
         private FolFormula ParseUnary()
         {

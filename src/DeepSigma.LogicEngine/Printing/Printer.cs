@@ -1,5 +1,6 @@
 using System.Text;
 using DeepSigma.LogicEngine.Formulas;
+using DeepSigma.LogicEngine.Printing.Infrastructure;
 
 namespace DeepSigma.LogicEngine.Printing;
 
@@ -34,7 +35,7 @@ public static class Printer
                 sb.Append(v.Name);
                 return;
             case Negation n:
-                WriteWithParens(PrecNot, outerPrec, sb, () =>
+                PrecedencePrinter.WriteWithParens(sb, PrecNot, outerPrec, () =>
                 {
                     sb.Append('!');
                     Write(n.Operand, sb, PrecNot);
@@ -56,26 +57,5 @@ public static class Printer
     }
 
     private static void WriteBinary(StringBuilder sb, int outerPrec, int prec, Formula left, string op, Formula right, bool rightAssoc)
-    {
-        WriteWithParens(prec, outerPrec, sb, () =>
-        {
-            Write(left, sb, rightAssoc ? prec + 1 : prec);
-            sb.Append(' ').Append(op).Append(' ');
-            Write(right, sb, rightAssoc ? prec : prec + 1);
-        });
-    }
-
-    private static void WriteWithParens(int prec, int outerPrec, StringBuilder sb, Action body)
-    {
-        var paren = prec < outerPrec;
-        if (paren)
-        {
-            sb.Append('(');
-        }
-        body();
-        if (paren)
-        {
-            sb.Append(')');
-        }
-    }
+        => PrecedencePrinter.WriteBinary(sb, outerPrec, prec, left, op, right, rightAssoc, (x, p) => Write(x, sb, p));
 }

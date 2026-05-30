@@ -1,4 +1,5 @@
 using System.Text;
+using DeepSigma.LogicEngine.Printing.Infrastructure;
 
 namespace DeepSigma.LogicEngine.Temporal;
 
@@ -33,25 +34,11 @@ internal static class LtlPrinter
     }
 
     private static void WriteOperand(LtlFormula f, StringBuilder sb)
-    {
-        if (f is LtlAtom or LtlBool or LtlNot or LtlNext or LtlEventually or LtlGlobally)
-        {
-            Write(f, sb);
-        }
-        else
-        {
-            sb.Append('(');
-            Write(f, sb);
-            sb.Append(')');
-        }
-    }
+        => ParenPrinter.WriteOperand(sb, f, IsAtomic, x => Write(x, sb));
+
+    private static bool IsAtomic(LtlFormula f)
+        => f is LtlAtom or LtlBool or LtlNot or LtlNext or LtlEventually or LtlGlobally;
 
     private static void WriteBinary(LtlFormula l, string op, LtlFormula r, StringBuilder sb)
-    {
-        sb.Append('(');
-        Write(l, sb);
-        sb.Append(' ').Append(op).Append(' ');
-        Write(r, sb);
-        sb.Append(')');
-    }
+        => ParenPrinter.WriteBinary(sb, l, op, r, x => Write(x, sb));
 }

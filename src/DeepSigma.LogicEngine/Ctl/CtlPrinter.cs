@@ -1,4 +1,5 @@
 using System.Text;
+using DeepSigma.LogicEngine.Printing.Infrastructure;
 
 namespace DeepSigma.LogicEngine.Ctl;
 
@@ -36,19 +37,11 @@ internal static class CtlPrinter
     }
 
     private static void WriteUnary(CtlFormula f, StringBuilder sb)
-    {
-        if (f is CtlAtom or CtlBool or CtlNot or CtlEX or CtlEG or CtlEF or CtlAX or CtlAG or CtlAF or CtlEU or CtlAU)
-        {
-            Write(f, sb);
-        }
-        else
-        {
-            sb.Append('('); Write(f, sb); sb.Append(')');
-        }
-    }
+        => ParenPrinter.WriteOperand(sb, f, IsAtomic, x => Write(x, sb));
+
+    private static bool IsAtomic(CtlFormula f)
+        => f is CtlAtom or CtlBool or CtlNot or CtlEX or CtlEG or CtlEF or CtlAX or CtlAG or CtlAF or CtlEU or CtlAU;
 
     private static void WriteBinary(CtlFormula l, string op, CtlFormula r, StringBuilder sb)
-    {
-        sb.Append('('); Write(l, sb); sb.Append(' ').Append(op).Append(' '); Write(r, sb); sb.Append(')');
-    }
+        => ParenPrinter.WriteBinary(sb, l, op, r, x => Write(x, sb));
 }

@@ -1,3 +1,5 @@
+using DeepSigma.LogicEngine.Parsing.Infrastructure;
+
 namespace DeepSigma.LogicEngine.Modal;
 
 /// <summary>
@@ -13,10 +15,7 @@ public static class ModalParser
 
     public static ModalFormula Parse(string source)
     {
-        var state = new State(Tokenize(source));
-        var formula = state.ParseIff();
-        state.Expect(Kind.End);
-        return formula;
+        return new State(Tokenize(source)).ParseComplete();
     }
 
     public static bool TryParse(string source, out ModalFormula formula)
@@ -72,50 +71,21 @@ public static class ModalParser
         _ => Kind.Id,
     };
 
-    private sealed class State
+    private sealed class State : TokenReader<Token, Kind>
     {
-        private readonly List<Token> _tokens;
-        private int _pos;
-        public State(List<Token> tokens) => _tokens = tokens;
-        private Token Peek() => _tokens[_pos];
-        private Token Advance() => _tokens[_pos++];
+        public State(List<Token> tokens) : base(tokens, t => t.Kind, t => t.Text) { }
 
-        public void Expect(Kind kind)
+        public ModalFormula ParseComplete()
         {
-            if (Peek().Kind != kind)
-            {
-                throw new FormatException($"Expected {kind} at position {Peek().Position}, got '{Peek().Text}'.");
-            }
-            Advance();
+            var formula = ParseIff();
+            Expect(Kind.End);
+            return formula;
         }
 
-        public ModalFormula ParseIff()
-        {
-            var left = ParseImplies();
-            while (Peek().Kind == Kind.Iff) { Advance(); left = new ModalIff(left, ParseImplies()); }
-            return left;
-        }
-
-        private ModalFormula ParseImplies()
-        {
-            var left = ParseOr();
-            if (Peek().Kind == Kind.Implies) { Advance(); return new ModalImplies(left, ParseImplies()); }
-            return left;
-        }
-
-        private ModalFormula ParseOr()
-        {
-            var left = ParseAnd();
-            while (Peek().Kind == Kind.Or) { Advance(); left = new ModalOr(left, ParseAnd()); }
-            return left;
-        }
-
-        private ModalFormula ParseAnd()
-        {
-            var left = ParseUnary();
-            while (Peek().Kind == Kind.And) { Advance(); left = new ModalAnd(left, ParseUnary()); }
-            return left;
-        }
+        private ModalFormula ParseIff() => ConnectiveChain.LeftAssoc(ParseImplies, () => Accept(Kind.Iff), (l, r) => new ModalIff(l, r));
+        private ModalFormula ParseImplies() => ConnectiveChain.RightAssoc(ParseOr, () => Accept(Kind.Implies), ParseImplies, (l, r) => new ModalImplies(l, r));
+        private ModalFormula ParseOr() => ConnectiveChain.LeftAssoc(ParseAnd, () => Accept(Kind.Or), (l, r) => new ModalOr(l, r));
+        private ModalFormula ParseAnd() => ConnectiveChain.LeftAssoc(ParseUnary, () => Accept(Kind.And), (l, r) => new ModalAnd(l, r));
 
         private ModalFormula ParseUnary()
         {

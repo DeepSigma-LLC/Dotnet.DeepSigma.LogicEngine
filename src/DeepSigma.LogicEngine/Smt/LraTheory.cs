@@ -20,20 +20,10 @@ internal sealed class LraTheory : ITheory
             {
                 throw new ArgumentException($"Not an LRA theory atom: {asserted[i].Atom}");
             }
-            var relation = asserted[i].Value ? atom.Relation : Negate(atom.Relation);
+            var relation = asserted[i].Value ? atom.Relation : atom.Relation.Negate();
             var terms = atom.Terms.Select(t => (t.Variable, t.Coefficient)).ToArray();
             solver.AddConstraint(i, terms, relation, atom.Constant);
         }
         return solver.FindConflict();
     }
-
-    private static LinearRelation Negate(LinearRelation relation) => relation switch
-    {
-        LinearRelation.LessOrEqual => LinearRelation.Greater,
-        LinearRelation.Less => LinearRelation.GreaterOrEqual,
-        LinearRelation.GreaterOrEqual => LinearRelation.Less,
-        LinearRelation.Greater => LinearRelation.LessOrEqual,
-        _ => throw new NotSupportedException(
-            "Negated equality is not supported; express equalities as a conjunction of <= and >=."),
-    };
 }

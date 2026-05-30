@@ -8,14 +8,6 @@ namespace DeepSigma.LogicEngine.FirstOrder;
 /// </summary>
 internal static class EqualityAxioms
 {
-    /// <summary>
-    /// The single reflexivity clause <c>{x = x}</c>, which is all paramodulation needs
-    /// (symmetry, transitivity, and congruence are derived by paramodulating). Returns
-    /// nothing if the clause set has no equality.
-    /// </summary>
-    public static IReadOnlyList<FolClause> Reflexivity(IReadOnlyList<FolClause> clauses)
-        => UsesEquality(clauses) ? new[] { Clause(Pos(Eq(V("x"), V("x")))) } : Array.Empty<FolClause>();
-
     public static IReadOnlyList<FolClause> For(IReadOnlyList<FolClause> clauses)
     {
         if (!UsesEquality(clauses))

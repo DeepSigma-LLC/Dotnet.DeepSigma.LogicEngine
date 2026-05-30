@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Numerics;
+using DeepSigma.LogicEngine.Parsing.Infrastructure;
 using DeepSigma.Mathematics.Algebra;
 using DeepSigma.Mathematics.Optimization.Exact;
 
@@ -17,11 +18,7 @@ public static class LraParser
 {
     public static SmtFormula Parse(string source)
     {
-        var tokens = Tokenize(source);
-        var state = new State(tokens);
-        var formula = state.ParseIff();
-        state.Expect(TokenKind.End);
-        return formula;
+        return new State(Tokenize(source)).ParseComplete();
     }
 
     public static bool TryParse(string source, out SmtFormula formula)
@@ -117,74 +114,26 @@ public static class LraParser
         return pos;
     }
 
-    private sealed class State
+    private sealed class State : TokenReader<Token, TokenKind>
     {
-        private readonly List<Token> _tokens;
-        private int _pos;
+        public State(List<Token> tokens) : base(tokens, t => t.Kind, t => t.Text) { }
 
-        public State(List<Token> tokens) => _tokens = tokens;
-
-        private Token Peek() => _tokens[_pos];
-        private Token Advance() => _tokens[_pos++];
-
-        public void Expect(TokenKind kind)
+        public SmtFormula ParseComplete()
         {
-            if (Peek().Kind != kind)
-            {
-                throw new FormatException($"Expected {kind} at position {Peek().Position}, got '{Peek().Text}'.");
-            }
-            Advance();
+            var formula = ParseIff();
+            Expect(TokenKind.End);
+            return formula;
         }
 
-        public SmtFormula ParseIff()
-        {
-            var left = ParseImplies();
-            while (Peek().Kind == TokenKind.Iff)
-            {
-                Advance();
-                left = new SmtIff(left, ParseImplies());
-            }
-            return left;
-        }
-
-        private SmtFormula ParseImplies()
-        {
-            var left = ParseOr();
-            if (Peek().Kind == TokenKind.Implies)
-            {
-                Advance();
-                return new SmtImplies(left, ParseImplies());
-            }
-            return left;
-        }
-
-        private SmtFormula ParseOr()
-        {
-            var left = ParseAnd();
-            while (Peek().Kind == TokenKind.Or)
-            {
-                Advance();
-                left = new SmtOr(left, ParseAnd());
-            }
-            return left;
-        }
-
-        private SmtFormula ParseAnd()
-        {
-            var left = ParseNot();
-            while (Peek().Kind == TokenKind.And)
-            {
-                Advance();
-                left = new SmtAnd(left, ParseNot());
-            }
-            return left;
-        }
+        private SmtFormula ParseIff() => ConnectiveChain.LeftAssoc(ParseImplies, () => Accept(TokenKind.Iff), (l, r) => new SmtIff(l, r));
+        private SmtFormula ParseImplies() => ConnectiveChain.RightAssoc(ParseOr, () => Accept(TokenKind.Implies), ParseImplies, (l, r) => new SmtImplies(l, r));
+        private SmtFormula ParseOr() => ConnectiveChain.LeftAssoc(ParseAnd, () => Accept(TokenKind.Or), (l, r) => new SmtOr(l, r));
+        private SmtFormula ParseAnd() => ConnectiveChain.LeftAssoc(ParseNot, () => Accept(TokenKind.And), (l, r) => new SmtAnd(l, r));
 
         private SmtFormula ParseNot()
         {
-            if (Peek().Kind == TokenKind.Not)
+            if (Accept(TokenKind.Not))
             {
-                Advance();
                 return new SmtNot(ParseNot());
             }
             return ParsePrimary();
@@ -227,9 +176,9 @@ public static class LraParser
             // Look ahead from the '(' to its matching ')'; if a connective appears at
             // depth 1 it is a formula group, otherwise it is a linear expression.
             var depth = 0;
-            for (var k = _pos; k < _tokens.Count; k++)
+            for (var offset = 0; ; offset++)
             {
-                switch (_tokens[k].Kind)
+                switch (PeekKind(offset))
                 {
                     case TokenKind.LParen: depth++; break;
                     case TokenKind.RParen:
@@ -243,7 +192,6 @@ public static class LraParser
                         return false;
                 }
             }
-            return false;
         }
 
         private SmtFormula ParseAtom()

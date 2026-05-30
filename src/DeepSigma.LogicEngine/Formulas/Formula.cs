@@ -19,38 +19,13 @@ public abstract record Formula
     public static Formula Implies(Formula antecedent, Formula consequent) => new Implication(antecedent, consequent);
     public static Formula Iff(Formula left, Formula right) => new Biconditional(left, right);
 
-    /// <summary>Big conjunction over a non-empty sequence; empty sequence yields True.</summary>
+    /// <summary>Big conjunction over a sequence; empty sequence yields True. Built as a balanced tree.</summary>
     public static Formula All(IEnumerable<Formula> formulas)
-        => Balanced(formulas as IReadOnlyList<Formula> ?? formulas.ToList(), isConjunction: true) ?? True;
+        => Common.BalancedFold.Combine(formulas as IReadOnlyList<Formula> ?? formulas.ToList(), static (a, b) => new Conjunction(a, b)) ?? True;
 
-    /// <summary>Big disjunction over a non-empty sequence; empty sequence yields False.</summary>
+    /// <summary>Big disjunction over a sequence; empty sequence yields False. Built as a balanced tree.</summary>
     public static Formula Any(IEnumerable<Formula> formulas)
-        => Balanced(formulas as IReadOnlyList<Formula> ?? formulas.ToList(), isConjunction: false) ?? False;
-
-    /// <summary>
-    /// Fold the list into a balanced (depth O(log n)) binary tree of conjunctions or
-    /// disjunctions. Balancing keeps the recursive normal-form transforms from
-    /// overflowing the stack on very large clause sets. Returns null if empty.
-    /// </summary>
-    private static Formula? Balanced(IReadOnlyList<Formula> formulas, bool isConjunction)
-    {
-        if (formulas.Count == 0)
-        {
-            return null;
-        }
-        Formula Fold(int lo, int hi)
-        {
-            if (hi - lo == 1)
-            {
-                return formulas[lo];
-            }
-            var mid = lo + (hi - lo) / 2;
-            var left = Fold(lo, mid);
-            var right = Fold(mid, hi);
-            return isConjunction ? new Conjunction(left, right) : new Disjunction(left, right);
-        }
-        return Fold(0, formulas.Count);
-    }
+        => Common.BalancedFold.Combine(formulas as IReadOnlyList<Formula> ?? formulas.ToList(), static (a, b) => new Disjunction(a, b)) ?? False;
 
     public static Formula Parse(string source) => Parsing.Parser.Parse(source);
     public static bool TryParse(string source, out Formula formula) => Parsing.Parser.TryParse(source, out formula);

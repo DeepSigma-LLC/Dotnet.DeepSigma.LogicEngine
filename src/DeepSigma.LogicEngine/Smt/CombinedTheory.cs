@@ -125,7 +125,7 @@ internal sealed class CombinedTheory : ITheory
         var constraints = new List<(IReadOnlyList<(string, Rational)>, LinearRelation, Rational)>();
         foreach (var (atom, value) in lra)
         {
-            var relation = value ? atom.Relation : Negate(atom.Relation);
+            var relation = value ? atom.Relation : atom.Relation.Negate();
             var terms = atom.Terms.Select(t => (t.Variable, t.Coefficient)).ToArray();
             constraints.Add((terms, relation, atom.Constant));
         }
@@ -192,13 +192,4 @@ internal sealed class CombinedTheory : ITheory
 
     private static (string, string) Order(string a, string b)
         => string.CompareOrdinal(a, b) <= 0 ? (a, b) : (b, a);
-
-    private static LinearRelation Negate(LinearRelation relation) => relation switch
-    {
-        LinearRelation.LessOrEqual => LinearRelation.Greater,
-        LinearRelation.Less => LinearRelation.GreaterOrEqual,
-        LinearRelation.GreaterOrEqual => LinearRelation.Less,
-        LinearRelation.Greater => LinearRelation.LessOrEqual,
-        _ => throw new ArgumentException("Equality atoms are split before reaching the theory."),
-    };
 }

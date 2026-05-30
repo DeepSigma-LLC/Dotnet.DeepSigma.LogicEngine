@@ -1,4 +1,5 @@
 using System.Text;
+using DeepSigma.LogicEngine.Printing.Infrastructure;
 
 namespace DeepSigma.LogicEngine.Modal;
 
@@ -29,25 +30,11 @@ internal static class ModalPrinter
     }
 
     private static void WriteOperand(ModalFormula f, StringBuilder sb)
-    {
-        if (f is ModalAtom or ModalBool or ModalNot or ModalBox or ModalDiamond)
-        {
-            Write(f, sb);
-        }
-        else
-        {
-            sb.Append('(');
-            Write(f, sb);
-            sb.Append(')');
-        }
-    }
+        => ParenPrinter.WriteOperand(sb, f, IsAtomic, x => Write(x, sb));
+
+    private static bool IsAtomic(ModalFormula f)
+        => f is ModalAtom or ModalBool or ModalNot or ModalBox or ModalDiamond;
 
     private static void WriteBinary(ModalFormula l, string op, ModalFormula r, StringBuilder sb)
-    {
-        sb.Append('(');
-        Write(l, sb);
-        sb.Append(' ').Append(op).Append(' ');
-        Write(r, sb);
-        sb.Append(')');
-    }
+        => ParenPrinter.WriteBinary(sb, l, op, r, x => Write(x, sb));
 }

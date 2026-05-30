@@ -30,17 +30,7 @@ public sealed record FolFunc : FolTerm
     public bool IsConstant => Args.Count == 0;
 
     public bool Equals(FolFunc? other)
-        => other is not null && Symbol == other.Symbol && Args.Count == other.Args.Count && Args.SequenceEqual(other.Args);
+        => other is not null && Symbol == other.Symbol && Common.StructuralEquality.ListEquals(Args, other.Args);
 
-    public override int GetHashCode()
-    {
-        var hash = new HashCode();
-        hash.Add(Symbol);
-        hash.Add(Args.Count);
-        foreach (var a in Args)
-        {
-            hash.Add(a);
-        }
-        return hash.ToHashCode();
-    }
+    public override int GetHashCode() => Common.StructuralEquality.Hash(Symbol, Args);
 }

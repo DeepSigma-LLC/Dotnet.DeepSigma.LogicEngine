@@ -14,35 +14,10 @@ public sealed record Term(string Symbol, IReadOnlyList<Term> Arguments)
     public static Term Func(string symbol, params Term[] arguments) => new(symbol, arguments);
 
     public bool Equals(Term? other)
-    {
-        if (other is null || !string.Equals(Symbol, other.Symbol, StringComparison.Ordinal))
-        {
-            return false;
-        }
-        if (Arguments.Count != other.Arguments.Count)
-        {
-            return false;
-        }
-        for (var i = 0; i < Arguments.Count; i++)
-        {
-            if (!Arguments[i].Equals(other.Arguments[i]))
-            {
-                return false;
-            }
-        }
-        return true;
-    }
+        => other is not null && string.Equals(Symbol, other.Symbol, StringComparison.Ordinal)
+            && Common.StructuralEquality.ListEquals(Arguments, other.Arguments);
 
-    public override int GetHashCode()
-    {
-        var hash = new HashCode();
-        hash.Add(Symbol, StringComparer.Ordinal);
-        foreach (var argument in Arguments)
-        {
-            hash.Add(argument);
-        }
-        return hash.ToHashCode();
-    }
+    public override int GetHashCode() => Common.StructuralEquality.Hash(Symbol, Arguments);
 
     public override string ToString()
         => IsConstant ? Symbol : $"{Symbol}({string.Join(", ", Arguments)})";

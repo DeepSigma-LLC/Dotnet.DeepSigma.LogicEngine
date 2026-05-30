@@ -13,8 +13,8 @@ namespace DeepSigma.LogicEngine.Encoding;
 /// has at least one true literal). These are correct and need no auxiliary
 /// variables, but they are exponential in <c>min(k, n-k)</c>. For small k —
 /// which covers most logic-puzzle uses (k = 1 in sudoku, n-queens, graph
-/// coloring) — they are fine. For large k, prefer a sequential-counter
-/// encoding (not yet implemented).
+/// coloring) — they are fine. For large k, prefer the linear <see cref="SequentialCounter"/>
+/// encoding.
 /// </para>
 /// </summary>
 public static class Cardinality

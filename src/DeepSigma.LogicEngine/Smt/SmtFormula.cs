@@ -20,15 +20,13 @@ public abstract record SmtFormula
     public static SmtFormula Implies(SmtFormula antecedent, SmtFormula consequent) => new SmtImplies(antecedent, consequent);
     public static SmtFormula Iff(SmtFormula left, SmtFormula right) => new SmtIff(left, right);
 
+    /// <summary>Big conjunction over a sequence; empty yields True. Built as a balanced tree (depth O(log n)).</summary>
     public static SmtFormula All(IEnumerable<SmtFormula> formulas)
-    {
-        SmtFormula? acc = null;
-        foreach (var f in formulas)
-        {
-            acc = acc is null ? f : new SmtAnd(acc, f);
-        }
-        return acc ?? True;
-    }
+        => Common.BalancedFold.Combine(formulas as IReadOnlyList<SmtFormula> ?? formulas.ToList(), static (a, b) => new SmtAnd(a, b)) ?? True;
+
+    /// <summary>Big disjunction over a sequence; empty yields False. Built as a balanced tree (depth O(log n)).</summary>
+    public static SmtFormula Any(IEnumerable<SmtFormula> formulas)
+        => Common.BalancedFold.Combine(formulas as IReadOnlyList<SmtFormula> ?? formulas.ToList(), static (a, b) => new SmtOr(a, b)) ?? False;
 
     public static SmtFormula operator !(SmtFormula f) => new SmtNot(f);
     public static SmtFormula operator &(SmtFormula a, SmtFormula b) => new SmtAnd(a, b);
@@ -47,35 +45,10 @@ public sealed record EqualityAtom(Term Left, Term Right) : SmtFormula;
 public sealed record PredicateAtom(string Symbol, IReadOnlyList<Term> Arguments) : SmtFormula
 {
     public bool Equals(PredicateAtom? other)
-    {
-        if (other is null || !string.Equals(Symbol, other.Symbol, StringComparison.Ordinal))
-        {
-            return false;
-        }
-        if (Arguments.Count != other.Arguments.Count)
-        {
-            return false;
-        }
-        for (var i = 0; i < Arguments.Count; i++)
-        {
-            if (!Arguments[i].Equals(other.Arguments[i]))
-            {
-                return false;
-            }
-        }
-        return true;
-    }
+        => other is not null && string.Equals(Symbol, other.Symbol, StringComparison.Ordinal)
+            && Common.StructuralEquality.ListEquals(Arguments, other.Arguments);
 
-    public override int GetHashCode()
-    {
-        var hash = new HashCode();
-        hash.Add(Symbol, StringComparer.Ordinal);
-        foreach (var argument in Arguments)
-        {
-            hash.Add(argument);
-        }
-        return hash.ToHashCode();
-    }
+    public override int GetHashCode() => Common.StructuralEquality.Hash(Symbol, Arguments);
 }
 
 public sealed record SmtNot(SmtFormula Operand) : SmtFormula;

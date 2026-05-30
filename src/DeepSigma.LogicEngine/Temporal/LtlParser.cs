@@ -1,3 +1,5 @@
+using DeepSigma.LogicEngine.Parsing.Infrastructure;
+
 namespace DeepSigma.LogicEngine.Temporal;
 
 /// <summary>
@@ -13,11 +15,7 @@ public static class LtlParser
 
     public static LtlFormula Parse(string source)
     {
-        var tokens = Tokenize(source);
-        var state = new State(tokens);
-        var formula = state.ParseIff();
-        state.Expect(Kind.End);
-        return formula;
+        return new State(Tokenize(source)).ParseComplete();
     }
 
     public static bool TryParse(string source, out LtlFormula formula)
@@ -75,50 +73,23 @@ public static class LtlParser
         _ => Kind.Id,
     };
 
-    private sealed class State
+    private sealed class State : TokenReader<Token, Kind>
     {
-        private readonly List<Token> _tokens;
-        private int _pos;
-        public State(List<Token> tokens) => _tokens = tokens;
-        private Token Peek() => _tokens[_pos];
-        private Token Advance() => _tokens[_pos++];
+        public State(List<Token> tokens) : base(tokens, t => t.Kind, t => t.Text) { }
 
-        public void Expect(Kind kind)
+        public LtlFormula ParseComplete()
         {
-            if (Peek().Kind != kind)
-            {
-                throw new FormatException($"Expected {kind} at position {Peek().Position}, got '{Peek().Text}'.");
-            }
-            Advance();
+            var formula = ParseIff();
+            Expect(Kind.End);
+            return formula;
         }
 
-        public LtlFormula ParseIff()
-        {
-            var left = ParseImplies();
-            while (Peek().Kind == Kind.Iff) { Advance(); left = new LtlIff(left, ParseImplies()); }
-            return left;
-        }
+        private LtlFormula ParseIff() => ConnectiveChain.LeftAssoc(ParseImplies, () => Accept(Kind.Iff), (l, r) => new LtlIff(l, r));
+        private LtlFormula ParseImplies() => ConnectiveChain.RightAssoc(ParseOr, () => Accept(Kind.Implies), ParseImplies, (l, r) => new LtlImplies(l, r));
+        private LtlFormula ParseOr() => ConnectiveChain.LeftAssoc(ParseAnd, () => Accept(Kind.Or), (l, r) => new LtlOr(l, r));
 
-        private LtlFormula ParseImplies()
-        {
-            var left = ParseOr();
-            if (Peek().Kind == Kind.Implies) { Advance(); return new LtlImplies(left, ParseImplies()); }
-            return left;
-        }
-
-        private LtlFormula ParseOr()
-        {
-            var left = ParseAnd();
-            while (Peek().Kind == Kind.Or) { Advance(); left = new LtlOr(left, ParseAnd()); }
-            return left;
-        }
-
-        private LtlFormula ParseAnd()
-        {
-            var left = ParseTemporalBinary();
-            while (Peek().Kind == Kind.And) { Advance(); left = new LtlAnd(left, ParseTemporalBinary()); }
-            return left;
-        }
+        // The And operand is the temporal-binary level (U/R/W), kept separate from the connective chain.
+        private LtlFormula ParseAnd() => ConnectiveChain.LeftAssoc(ParseTemporalBinary, () => Accept(Kind.And), (l, r) => new LtlAnd(l, r));
 
         private LtlFormula ParseTemporalBinary()
         {

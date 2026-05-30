@@ -5,6 +5,7 @@ using DeepSigma.LogicEngine.Formulas;
 using DeepSigma.LogicEngine.Solvers.MaxSat;
 using DeepSigma.Mathematics.Algebra;
 using DeepSigma.Mathematics.Optimization.Exact;
+using static DeepSigma.LogicEngine.Probabilistic.RationalVectors;
 
 namespace DeepSigma.LogicEngine.Probabilistic;
 
@@ -370,5 +371,4 @@ internal static class PsatColumnGeneration
         return w;
     }
 
-    private static Rational[] Zeros(int n) => Enumerable.Repeat(Rational.Zero, n).ToArray();
 }

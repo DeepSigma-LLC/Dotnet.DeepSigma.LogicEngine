@@ -1,4 +1,5 @@
 using System.Text;
+using DeepSigma.LogicEngine.Printing.Infrastructure;
 
 namespace DeepSigma.LogicEngine.Smt;
 
@@ -119,18 +120,5 @@ internal static class SmtPrinter
     }
 
     private static void WriteBinary(StringBuilder sb, int outerPrec, int prec, SmtFormula left, string op, SmtFormula right, bool rightAssoc)
-    {
-        var paren = prec < outerPrec;
-        if (paren)
-        {
-            sb.Append('(');
-        }
-        Write(left, sb, rightAssoc ? prec + 1 : prec);
-        sb.Append(' ').Append(op).Append(' ');
-        Write(right, sb, rightAssoc ? prec : prec + 1);
-        if (paren)
-        {
-            sb.Append(')');
-        }
-    }
+        => PrecedencePrinter.WriteBinary(sb, outerPrec, prec, left, op, right, rightAssoc, (x, p) => Write(x, sb, p));
 }
