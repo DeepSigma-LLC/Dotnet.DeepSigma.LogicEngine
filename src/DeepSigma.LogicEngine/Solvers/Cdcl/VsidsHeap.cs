@@ -11,9 +11,9 @@ internal sealed class VsidsHeap
 {
     private const double RescaleThreshold = 1e100;
 
-    private readonly double[] _activity;
-    private readonly int[] _heap;        // heap[i] = variable id
-    private readonly int[] _position;    // position[v] = index in _heap, or -1 if absent
+    private double[] _activity;
+    private int[] _heap;        // heap[i] = variable id
+    private int[] _position;    // position[v] = index in _heap, or -1 if absent
     private readonly double _decay;
     private int _size;
     private double _increment = 1.0;
@@ -35,6 +35,18 @@ internal sealed class VsidsHeap
     public bool IsEmpty => _size == 0;
 
     public double ActivityOf(int variable) => _activity[variable];
+
+    /// <summary>Append a fresh variable (zero activity) and insert it into the heap.</summary>
+    public void AddVariable()
+    {
+        var variable = _activity.Length;
+        Array.Resize(ref _activity, variable + 1);
+        Array.Resize(ref _heap, variable + 1);
+        Array.Resize(ref _position, variable + 1);
+        _activity[variable] = 0.0;
+        _position[variable] = -1;
+        InsertIfAbsent(variable);
+    }
 
     public void Bump(int variable)
     {

@@ -55,7 +55,49 @@ public sealed class IncrementalCdclSolver
     public bool AddClause(IReadOnlyCollection<Literal> clause)
         => _engine.AddClause(Encode(clause));
 
+    /// <summary>
+    /// Introduce a fresh variable by name if it is not already known, growing the
+    /// solver's universe. Idempotent. Lets callers (e.g. MaxSAT) add selector and
+    /// relaxation variables after construction.
+    /// </summary>
+    public void NewVariable(string name)
+    {
+        if (_map.TryGetId(name, out _))
+        {
+            return;
+        }
+        var mapId = _map.GetOrAdd(name);
+        var engineId = _engine.NewVariable();
+        System.Diagnostics.Debug.Assert(mapId == engineId, "VariableMap and engine variable ids must stay in lockstep.");
+    }
+
     public SatResult Solve() => SolveUnder(Array.Empty<Literal>());
+
+    /// <summary>
+    /// Solve under assumptions and, on failure, report the responsible subset of
+    /// assumptions (empty if the formula is unsatisfiable regardless of them).
+    /// </summary>
+    public UnsatCoreResult SolveUnderWithCore(IReadOnlyCollection<Literal> assumptions)
+    {
+        var encoded = Encode(assumptions);
+        var inputSet = new HashSet<int>(encoded);
+        var outcome = _engine.SearchEx(encoded, out var failed);
+        if (outcome == SearchOutcome.Satisfiable)
+        {
+            return UnsatCoreResult.Satisfiable(Model.From(_map.Decode(_engine.IsTrue)));
+        }
+
+        var core = new List<Literal>();
+        var seen = new HashSet<int>();
+        foreach (var lit in failed)
+        {
+            if (inputSet.Contains(lit) && seen.Add(lit))
+            {
+                core.Add(new Literal(_map.NameOf(CdclLiterals.Variable(lit)), CdclLiterals.IsNegated(lit)));
+            }
+        }
+        return UnsatCoreResult.Unsatisfiable(core);
+    }
 
     /// <summary>
     /// Solve subject to the given assumption literals being true. The

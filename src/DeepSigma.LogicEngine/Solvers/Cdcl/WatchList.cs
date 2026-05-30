@@ -8,7 +8,7 @@ namespace DeepSigma.LogicEngine.Solvers.Cdcl;
 /// </summary>
 internal sealed class WatchList
 {
-    private readonly List<CdclClause>[] _watchers;
+    private List<CdclClause>[] _watchers;
 
     public WatchList(int variableCount)
     {
@@ -17,6 +17,15 @@ internal sealed class WatchList
         {
             _watchers[i] = new List<CdclClause>();
         }
+    }
+
+    /// <summary>Grow the index to accommodate one more variable (two literals).</summary>
+    public void AddVariable()
+    {
+        var oldLength = _watchers.Length;
+        Array.Resize(ref _watchers, oldLength + 2);
+        _watchers[oldLength] = new List<CdclClause>();
+        _watchers[oldLength + 1] = new List<CdclClause>();
     }
 
     public List<CdclClause> Watchers(int literal) => _watchers[literal];

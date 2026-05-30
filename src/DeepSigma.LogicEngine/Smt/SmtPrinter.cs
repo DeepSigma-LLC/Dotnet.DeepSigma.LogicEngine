@@ -36,6 +36,9 @@ internal static class SmtPrinter
             case PredicateAtom pred:
                 WritePredicate(pred, sb);
                 return;
+            case LinearConstraintAtom lc:
+                WriteLinear(lc, sb);
+                return;
             case SmtNot n:
                 WriteNot(n, sb, outerPrec);
                 return;
@@ -61,6 +64,33 @@ internal static class SmtPrinter
         {
             sb.Append('(').AppendJoin(", ", pred.Arguments).Append(')');
         }
+    }
+
+    private static void WriteLinear(LinearConstraintAtom lc, StringBuilder sb)
+    {
+        var first = true;
+        foreach (var term in lc.Terms)
+        {
+            if (!first)
+            {
+                sb.Append(" + ");
+            }
+            first = false;
+            sb.Append(term.Coefficient).Append('*').Append(term.Variable);
+        }
+        if (first)
+        {
+            sb.Append('0');
+        }
+        var op = lc.Relation switch
+        {
+            DeepSigma.Mathematics.Optimization.Exact.LinearRelation.LessOrEqual => "<=",
+            DeepSigma.Mathematics.Optimization.Exact.LinearRelation.Less => "<",
+            DeepSigma.Mathematics.Optimization.Exact.LinearRelation.GreaterOrEqual => ">=",
+            DeepSigma.Mathematics.Optimization.Exact.LinearRelation.Greater => ">",
+            _ => "=",
+        };
+        sb.Append(' ').Append(op).Append(' ').Append(lc.Constant);
     }
 
     private static void WriteNot(SmtNot n, StringBuilder sb, int outerPrec)

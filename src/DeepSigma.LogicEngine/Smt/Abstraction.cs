@@ -3,7 +3,7 @@ using DeepSigma.LogicEngine.Formulas;
 namespace DeepSigma.LogicEngine.Smt;
 
 /// <summary>One theory atom and the propositional variable that stands for it.</summary>
-internal sealed record AtomEntry(string Name, SmtFormula Atom, EufAtomKind Kind, Term First, Term Second);
+internal sealed record AtomEntry(string Name, SmtFormula Atom);
 
 /// <summary>
 /// Interns the distinct theory atoms of a formula and assigns each a fresh
@@ -28,14 +28,19 @@ internal sealed class AtomTable
         var rightKey = right.ToString();
         var (a, b) = string.CompareOrdinal(leftKey, rightKey) <= 0 ? (left, right) : (right, left);
         var key = $"eq|{a}|{b}";
-        return Formula.Var(GetOrAdd(key, name => new AtomEntry(name, new EqualityAtom(a, b), EufAtomKind.Equality, a, b)));
+        return Formula.Var(GetOrAdd(key, name => new AtomEntry(name, new EqualityAtom(a, b))));
     }
 
     public Formula PredicateVar(PredicateAtom predicate)
     {
-        var application = new Term(predicate.Symbol, predicate.Arguments);
-        var key = $"pred|{application}";
-        return Formula.Var(GetOrAdd(key, name => new AtomEntry(name, predicate, EufAtomKind.Predicate, application, application)));
+        var key = $"pred|{new Term(predicate.Symbol, predicate.Arguments)}";
+        return Formula.Var(GetOrAdd(key, name => new AtomEntry(name, predicate)));
+    }
+
+    public Formula ArithmeticVar(LinearConstraintAtom atom)
+    {
+        var key = $"lin|{atom}";
+        return Formula.Var(GetOrAdd(key, name => new AtomEntry(name, atom)));
     }
 
     private string GetOrAdd(string key, Func<string, AtomEntry> factory)
@@ -70,6 +75,7 @@ internal static class Abstraction
         SmtBool b => Formula.Const(b.Value),
         EqualityAtom e => e.Left.Equals(e.Right) ? Formula.True : atoms.EqualityVar(e.Left, e.Right),
         PredicateAtom p => atoms.PredicateVar(p),
+        LinearConstraintAtom lc => atoms.ArithmeticVar(lc),
         SmtNot n => new Negation(Build(n.Operand, atoms)),
         SmtAnd a => new Conjunction(Build(a.Left, atoms), Build(a.Right, atoms)),
         SmtOr o => new Disjunction(Build(o.Left, atoms), Build(o.Right, atoms)),

@@ -1,5 +1,13 @@
 namespace DeepSigma.LogicEngine.Solvers.Cdcl;
 
+/// <summary>Outcome of an assumption-aware search.</summary>
+internal enum SearchOutcome
+{
+    Satisfiable,
+    UnsatUnderAssumptions,
+    RootUnsat,
+}
+
 /// <summary>
 /// The reusable CDCL search core, working purely in integer literals over a
 /// fixed variable count. Clauses can be added incrementally at the root level,
@@ -24,7 +32,7 @@ internal sealed class CdclEngine
     private bool _rootConflict;
 
     public SolverStatistics Statistics { get; } = new();
-    public int VariableCount { get; }
+    public int VariableCount { get; private set; }
 
     public CdclEngine(int variableCount, SolverOptions options)
     {
@@ -38,6 +46,20 @@ internal sealed class CdclEngine
         _analyzer = new ConflictAnalyzer(_trail, _clauses, _vsids);
         _reducer = new ClauseReducer(_clauses, _watches, _trail, Statistics, options);
         _restoreToHeap = _vsids.InsertIfAbsent;
+    }
+
+    /// <summary>
+    /// Introduce a fresh, unconstrained variable and return its id. Grows all
+    /// array-backed state in lockstep — true incremental-SAT <c>newVar()</c>.
+    /// </summary>
+    public int NewVariable()
+    {
+        var id = _trail.AddVariable();
+        _watches.AddVariable();
+        _vsids.AddVariable();
+        _analyzer.AddVariable();
+        VariableCount = id + 1;
+        return id;
     }
 
     /// <summary>
@@ -92,15 +114,23 @@ internal sealed class CdclEngine
     /// <summary>
     /// Search for a satisfying assignment in which every assumption literal is
     /// true. Returns true if satisfiable. Learned clauses persist for the next
-    /// call. A conflict at decision level 0 marks the formula unconditionally
-    /// unsatisfiable; unsatisfiability that depends only on the assumptions does
-    /// not.
+    /// call.
     /// </summary>
-    public bool Search(IReadOnlyList<int> assumptions)
+    public bool Search(IReadOnlyList<int> assumptions) => SearchEx(assumptions, out _) == SearchOutcome.Satisfiable;
+
+    /// <summary>
+    /// Like <see cref="Search"/> but distinguishes a conflict independent of the
+    /// assumptions (<see cref="SearchOutcome.RootUnsat"/>, permanently
+    /// unsatisfiable) from one caused by the assumptions
+    /// (<see cref="SearchOutcome.UnsatUnderAssumptions"/>), in which case
+    /// <paramref name="failedAssumptions"/> is the responsible subset.
+    /// </summary>
+    public SearchOutcome SearchEx(IReadOnlyList<int> assumptions, out IReadOnlyList<int> failedAssumptions)
     {
+        failedAssumptions = Array.Empty<int>();
         if (_rootConflict)
         {
-            return false;
+            return SearchOutcome.RootUnsat;
         }
         _trail.CancelUntil(0, _restoreToHeap);
 
@@ -119,7 +149,7 @@ internal sealed class CdclEngine
                 if (_trail.DecisionLevel == 0)
                 {
                     _rootConflict = true;
-                    return false;
+                    return SearchOutcome.RootUnsat;
                 }
                 HandleConflict(conflict);
             }
@@ -136,9 +166,10 @@ internal sealed class CdclEngine
                 {
                     case DecisionOutcome.Satisfiable:
                         CdclInvariants.AssertModelComplete(_trail);
-                        return true;
+                        return SearchOutcome.Satisfiable;
                     case DecisionOutcome.UnsatisfiableUnderAssumptions:
-                        return false;
+                        failedAssumptions = _analyzer.AnalyzeFinal(literal);
+                        return SearchOutcome.UnsatUnderAssumptions;
                     default:
                         Statistics.Decisions++;
                         _trail.Decide(literal);
@@ -201,7 +232,7 @@ internal sealed class CdclEngine
             switch (_trail.LiteralValue(assumption))
             {
                 case LBool.False:
-                    literal = 0;
+                    literal = assumption; // the failing assumption, for analyzeFinal
                     return DecisionOutcome.UnsatisfiableUnderAssumptions;
                 case LBool.Unassigned:
                     literal = assumption;

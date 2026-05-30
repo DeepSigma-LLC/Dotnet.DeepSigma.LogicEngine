@@ -1,7 +1,9 @@
+using DeepSigma.LogicEngine.Cnf;
 using DeepSigma.LogicEngine.Evaluation;
 using DeepSigma.LogicEngine.Formulas;
 using DeepSigma.LogicEngine.Reasoning;
 using DeepSigma.LogicEngine.Smt;
+using DeepSigma.LogicEngine.Solvers.MaxSat;
 
 Section("1. Parsing and pretty-printing");
 {
@@ -141,6 +143,30 @@ Section("10. SMT (EUF): minimal conflict core");
     Console.WriteLine(core is null
         ? "  consistent"
         : $"  inconsistent; minimal core: {{ {string.Join(", ", core)} }}");
+}
+
+Section("11. SMT (LRA): linear real arithmetic");
+{
+    var unsat = LraParser.Parse("x >= 1 & y >= 1 & x + y <= 1");
+    Console.WriteLine($"  {unsat}");
+    Console.WriteLine($"  satisfiable? {LraSolver.IsSatisfiable(unsat)}");
+
+    var valid = LraParser.Parse("x <= 5 -> x <= 6");
+    Console.WriteLine($"  (x <= 5 -> x <= 6) valid? {LraSolver.IsValid(valid)}");
+}
+
+Section("12. MaxSAT: optimize over soft constraints");
+{
+    // Hard: a or b. Soft: prefer !a (w1) and !b (w1). Best gives up one → cost 1.
+    var hard = new[] { new[] { Literal.Positive("a"), Literal.Positive("b") } };
+    var soft = new[]
+    {
+        new SoftClause(new[] { Literal.Negative("a") }, 1),
+        new SoftClause(new[] { Literal.Negative("b") }, 1),
+    };
+    var result = new MaxSatSolver(hard, soft).Solve();
+    Console.WriteLine($"  optimum cost: {result.Cost}");
+    Console.WriteLine($"  a={result.Model["a"]}, b={result.Model["b"]}");
 }
 
 return;

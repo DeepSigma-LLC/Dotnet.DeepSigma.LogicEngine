@@ -17,14 +17,14 @@ internal enum LBool : byte
 /// </summary>
 internal sealed class Trail
 {
-    private readonly LBool[] _value;
-    private readonly int[] _level;
-    private readonly CdclClause?[] _reason;
-    private readonly bool[] _savedPhase;
+    private LBool[] _value;
+    private int[] _level;
+    private CdclClause?[] _reason;
+    private bool[] _savedPhase;
     private readonly List<int> _trail = new();
     private readonly List<int> _trailLimits = new();
 
-    public int VariableCount { get; }
+    public int VariableCount { get; private set; }
     public int QHead { get; private set; }
 
     public Trail(int variableCount)
@@ -34,6 +34,17 @@ internal sealed class Trail
         _level = new int[variableCount];
         _reason = new CdclClause?[variableCount];
         _savedPhase = new bool[variableCount];
+    }
+
+    /// <summary>Append a fresh, unassigned variable and return its id.</summary>
+    public int AddVariable()
+    {
+        var id = VariableCount++;
+        Array.Resize(ref _value, VariableCount);
+        Array.Resize(ref _level, VariableCount);
+        Array.Resize(ref _reason, VariableCount);
+        Array.Resize(ref _savedPhase, VariableCount);
+        return id;
     }
 
     public int DecisionLevel => _trailLimits.Count;

@@ -15,7 +15,7 @@ internal sealed class ConflictAnalyzer
     private readonly Trail _trail;
     private readonly ClauseDatabase _clauses;
     private readonly VsidsHeap _vsids;
-    private readonly bool[] _seen;
+    private bool[] _seen;
     private readonly List<int> _learned = new();
 
     public ConflictAnalyzer(Trail trail, ClauseDatabase clauses, VsidsHeap vsids)
@@ -24,6 +24,67 @@ internal sealed class ConflictAnalyzer
         _clauses = clauses;
         _vsids = vsids;
         _seen = new bool[trail.VariableCount];
+    }
+
+    /// <summary>Grow scratch state to accommodate one more variable.</summary>
+    public void AddVariable() => Array.Resize(ref _seen, _seen.Length + 1);
+
+    /// <summary>
+    /// When a search fails because an assumption literal was forced false,
+    /// compute the subset of assumption literals responsible. Walks the
+    /// implication graph of the failing literal, collecting decision literals
+    /// (which, during assumption-driven search, are the assumptions) at the
+    /// polarity they were assigned. Level-0 facts are excluded.
+    /// </summary>
+    public IReadOnlyList<int> AnalyzeFinal(int failingAssumption)
+    {
+        var core = new List<int> { failingAssumption };
+        var failingVar = CdclLiterals.Variable(failingAssumption);
+        if (_trail.LevelOf(failingVar) == 0)
+        {
+            // Forced false at the root: the assumption alone is inconsistent.
+            return core;
+        }
+
+        var touched = new List<int>();
+        _seen[failingVar] = true;
+        touched.Add(failingVar);
+
+        for (var i = _trail.AssignedCount - 1; i >= 0; i--)
+        {
+            var literal = _trail.LiteralAt(i);
+            var variable = CdclLiterals.Variable(literal);
+            if (!_seen[variable])
+            {
+                continue;
+            }
+            var reason = _trail.ReasonFor(variable);
+            if (reason is null)
+            {
+                if (_trail.LevelOf(variable) > 0)
+                {
+                    core.Add(literal); // a decision = an assumption, at its asserted polarity
+                }
+            }
+            else
+            {
+                foreach (var q in reason.Literals)
+                {
+                    var qv = CdclLiterals.Variable(q);
+                    if (qv != variable && !_seen[qv] && _trail.LevelOf(qv) > 0)
+                    {
+                        _seen[qv] = true;
+                        touched.Add(qv);
+                    }
+                }
+            }
+        }
+
+        foreach (var v in touched)
+        {
+            _seen[v] = false;
+        }
+        return core;
     }
 
     public LearnedClause Analyze(CdclClause conflict)

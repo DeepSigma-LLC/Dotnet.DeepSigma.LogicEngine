@@ -10,9 +10,10 @@ A .NET 10 logic engine for **propositional logic** and **SMT-lite (EUF)**. It st
 - **Horn-clause** forward and backward chaining with proof trees.
 - **Cardinality constraints** — pairwise/binomial (model-counting safe) and a linear **sequential-counter** encoding.
 - **DIMACS** CNF read/write.
-- **SMT-lite for EUF** — equality with uninterpreted functions and predicates — via a lazy **DPLL(T)** loop over the CDCL solver and a proof-producing **congruence closure**.
+- **SMT** via a generic lazy **DPLL(T)** framework with two theories: **EUF** (equality + uninterpreted functions + predicates, proof-producing congruence closure) and **LRA** (linear real arithmetic, exact-rational simplex).
+- **MaxSAT** — core-guided weighted partial optimization (find the *best* model, not just any).
 
-Everything is pure managed code, no native dependencies. The solution builds warnings-as-errors and ships with **241 tests**.
+Pure managed code; its one dependency, [DeepSigma.Mathematics](https://github.com/DeepSigma-LLC/Dotnet.DeepSigma.Mathematics) (exact-rational arithmetic + simplex for LRA), is also managed. Builds warnings-as-errors and ships with **271 tests** (plus the exact-arithmetic tests in DeepSigma.Mathematics).
 
 ---
 
@@ -32,6 +33,8 @@ Everything is pure managed code, no native dependencies. The solution builds war
 - [Resolution proofs](#resolution-proofs)
 - [Horn clauses](#horn-clauses)
 - [SMT-lite: equality + uninterpreted functions (EUF)](#smt-lite-equality--uninterpreted-functions-euf)
+- [SMT-lite: linear real arithmetic (LRA)](#smt-lite-linear-real-arithmetic-lra)
+- [MaxSAT: optimization](#maxsat-optimization)
 - [Worked examples (samples)](#worked-examples-samples)
 - [Operator and syntax reference](#operator-and-syntax-reference)
 - [Performance notes](#performance-notes)
@@ -53,6 +56,8 @@ The library is not yet published to NuGet; reference the project directly:
   <ProjectReference Include="path/to/src/DeepSigma.LogicEngine/DeepSigma.LogicEngine.csproj" />
 </ItemGroup>
 ```
+
+The library depends on **DeepSigma.Mathematics** (managed; provides the exact-rational arithmetic and simplex used by the LRA theory), currently consumed via a cross-repo project reference.
 
 Smallest possible program — is a formula a tautology?
 
@@ -95,7 +100,8 @@ using DeepSigma.LogicEngine.Cnf;          // Dimacs, CnfTransformer, Literal, Cn
 using DeepSigma.LogicEngine.Solvers;      // SatResult, DpllSolver, TruthTableSolver
 using DeepSigma.LogicEngine.Solvers.Cdcl; // CdclSolver, IncrementalCdclSolver
 using DeepSigma.LogicEngine.Encoding;     // Cardinality, SequentialCounter
-using DeepSigma.LogicEngine.Smt;          // EufSolver, SmtFormula, Term
+using DeepSigma.LogicEngine.Smt;          // EufSolver, LraSolver, SmtFormula, Term, LraParser
+using DeepSigma.LogicEngine.Solvers.MaxSat; // MaxSatSolver, SoftClause
 ```
 
 ---
@@ -436,6 +442,54 @@ SmtFormula phi = SmtFormula.Eq(a, b) & SmtFormula.Distinct(fa, Term.Func("f", b)
 
 ---
 
+## SMT-lite: linear real arithmetic (LRA)
+
+Reason about linear constraints over rational/real variables — `<=`, `<`, `>=`, `>`, `=`, `!=`, with `+` and scalar `*`. The same DPLL(T) framework drives an **exact-rational simplex** theory solver (no floating-point, so verdicts are sound).
+
+```csharp
+using DeepSigma.LogicEngine.Smt;
+
+// Infeasible system
+LraSolver.IsSatisfiable(LraParser.Parse("x >= 1 & y >= 1 & x + y <= 1"));   // False
+
+// Validity
+LraSolver.IsValid(LraParser.Parse("x <= 5 -> x <= 6"));                     // True
+
+// Boolean structure drives the theory: x must be 2, but neither disjunct holds
+LraSolver.IsSatisfiable(LraParser.Parse("(x >= 3 | x <= 1) & x >= 2 & x <= 2"));  // False
+
+// Strict inequalities are exact
+LraSolver.IsSatisfiable(LraParser.Parse("x > 0 & x < 1"));                  // True
+```
+
+`=` parses as a conjunction of `≤`/`≥` and `!=` as a disjunction of `<`/`>`, so negation is handled by the boolean structure. (EUF and LRA are separate theories — a given solve uses one.)
+
+---
+
+## MaxSAT: optimization
+
+Find the assignment that satisfies all hard clauses and **minimizes** the total weight of unsatisfied soft clauses (core-guided weighted partial MaxSAT, built on the incremental solver + cardinality encoders).
+
+```csharp
+using DeepSigma.LogicEngine.Cnf;
+using DeepSigma.LogicEngine.Solvers.MaxSat;
+
+// Hard: (a ∨ b). Soft: prefer ¬a (w1) and ¬b (w1) — best gives up exactly one.
+var hard = new[] { new[] { Literal.Positive("a"), Literal.Positive("b") } };
+var soft = new[]
+{
+    new SoftClause(new[] { Literal.Negative("a") }, 1),
+    new SoftClause(new[] { Literal.Negative("b") }, 1),
+};
+
+MaxSatResult result = new MaxSatSolver(hard, soft).Solve();
+Console.WriteLine(result.Cost);   // 1  (the optimum)
+```
+
+The incremental solver also exposes the underlying capability directly: `SolveUnderWithCore(assumptions)` returns the failed-assumption core on UNSAT.
+
+---
+
 ## Worked examples (samples)
 
 Two runnable console projects:
@@ -481,7 +535,7 @@ EUF atoms additionally use `=` and `!=` between terms, and predicates are writte
 
 ## Limitations
 
-- **Propositional + EUF only.** No first-order quantifiers, no arithmetic, arrays, or bit-vectors.
+- **Propositional + EUF + LRA only.** No first-order quantifiers; no integer arithmetic (LIA), arrays, or bit-vectors; no theory combination (a solve uses one theory).
 - EUF is **quasi-decidable in practice** but uses a rebuild-per-check theory solver and a non-amortized `Explain` — fine for teaching and modest problems, not tuned for large industrial instances.
 - The solvers are **single-threaded** and allocate managed objects; they are not a drop-in replacement for MiniSAT/Z3 on competition benchmarks.
 - No incremental *theory* propagation yet (the SMT loop checks complete propositional models).
@@ -494,7 +548,7 @@ These are deliberate scope boundaries, not bugs — see the roadmap.
 
 ```bash
 dotnet build                                   # warnings-as-errors, net10.0
-dotnet test                                    # 241 tests
+dotnet test                                    # 271 tests
 dotnet run --project samples/DeepSigma.LogicEngine.Demo
 ```
 
