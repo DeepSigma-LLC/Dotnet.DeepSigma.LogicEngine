@@ -3,6 +3,7 @@ using DeepSigma.LogicEngine.Evaluation;
 using DeepSigma.LogicEngine.Formulas;
 using DeepSigma.LogicEngine.FiniteGroups;
 using DeepSigma.LogicEngine.FiniteSets;
+using DeepSigma.LogicEngine.FirstOrder;
 using DeepSigma.LogicEngine.Fuzzy;
 using DeepSigma.LogicEngine.Probabilistic;
 using DeepSigma.LogicEngine.Reasoning;
@@ -270,6 +271,32 @@ Section("18. Finite group theory (SAT model finding)");
 
     var s3 = GroupFinder.FindGroup(6, new GroupSpec { Abelian = false });
     Console.WriteLine($"  smallest non-abelian group (order 6) found? {s3 is not null}; ≅ S₃? {s3?.IsIsomorphicTo(GroupTables.SymmetricGroup(3))}");
+}
+
+Section("19. Linear integer arithmetic (LIA)");
+{
+    var f = LraParser.Parse("2*x = 1");
+    Console.WriteLine($"  '2x = 1' satisfiable over reals? {LraSolver.IsSatisfiable(f)}; over integers? {LiaSolver.IsSatisfiable(f, new[] { "x" })}");
+
+    var diophantine = LraParser.Parse("3*x + 5*y = 7");
+    var model = LiaSolver.FindModel(diophantine, new[] { "x", "y" }, bound: 20);
+    Console.WriteLine($"  3x + 5y = 7 integer solution: x={model!.Values["x"]}, y={model.Values["y"]}");
+}
+
+Section("20. First-order logic (resolution prover)");
+{
+    var syllogism = FirstOrderProver.Entails(
+        new[] { FolFormula.Parse("forall x. (Man(x) -> Mortal(x))"), FolFormula.Parse("Man(socrates)") },
+        FolFormula.Parse("Mortal(socrates)"));
+    Console.WriteLine($"  Man⇒Mortal, Man(socrates) ⊢ Mortal(socrates)? {syllogism}");
+
+    var equality = FirstOrderProver.Entails(
+        new[] { FolFormula.Parse("a = b"), FolFormula.Parse("b = c") },
+        FolFormula.Parse("a = c"));
+    Console.WriteLine($"  a=b, b=c ⊢ a=c? {equality}");
+
+    var nonTheorem = FirstOrderProver.IsValid(FolFormula.Parse("(exists x. P(x)) -> (forall x. P(x))"));
+    Console.WriteLine($"  '(∃x P) -> (∀x P)' valid? {nonTheorem}");
 }
 
 return;

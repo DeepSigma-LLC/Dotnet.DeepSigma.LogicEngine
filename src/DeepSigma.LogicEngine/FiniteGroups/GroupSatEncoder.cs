@@ -90,8 +90,74 @@ internal static class GroupSatEncoder
             }
         }
 
+        if (spec?.UseLexLeader == true)
+        {
+            AddLexLeaderConstraints(clauses, n);
+        }
+
         AddSpecConstraints(clauses, n, spec);
         return Formula.All(clauses);
+    }
+
+    /// <summary>
+    /// Sound partial symmetry break: for each adjacent transposition π = (k, k+1) of
+    /// the non-identity element labels, require flatten(T) ≤ₗₑₓ flatten(Tᵖ). Every
+    /// isomorphism class's lex-minimal table satisfies all of these, so at least one
+    /// representative per class survives — counting still deduplicates by canonical
+    /// form, so this only prunes relabelings (never changes the answer).
+    /// </summary>
+    private static void AddLexLeaderConstraints(List<Formula> clauses, int n)
+    {
+        for (var k = 1; k < n - 1; k++)
+        {
+            AddLexLessOrEqual(clauses, n, k);
+        }
+    }
+
+    private static void AddLexLessOrEqual(List<Formula> clauses, int n, int k)
+    {
+        int Pi(int x) => x == k ? k + 1 : x == k + 1 ? k : x; // the transposition (k, k+1), an involution
+        var cells = n * n;
+        Formula prefixEqual = Formula.True;
+        for (var c = 0; c < cells; c++)
+        {
+            int i = c / n, j = c % n, pi = Pi(i), pj = Pi(j);
+            // Forbid a strict "greater" at the first position the two tables differ.
+            clauses.Add(Formula.Implies(prefixEqual, Formula.Not(GreaterAt(n, k, i, j, pi, pj))));
+            if (c < cells - 1)
+            {
+                var next = Formula.Var($"__lex_{k}_{c + 1}");
+                clauses.Add(Formula.Iff(next, prefixEqual & EqualAt(n, k, i, j, pi, pj)));
+                prefixEqual = next;
+            }
+        }
+    }
+
+    // value(T at (i,j)) > value(Tᵖ at (i,j)), where Tᵖ[i,j] = π(T[πi,πj]).
+    private static Formula GreaterAt(int n, int k, int i, int j, int pi, int pj)
+    {
+        int Pi(int x) => x == k ? k + 1 : x == k + 1 ? k : x;
+        var terms = new List<Formula>();
+        for (var va = 0; va < n; va++)
+        {
+            for (var vb = 0; vb < va; vb++)
+            {
+                terms.Add(M(i, j, va) & M(pi, pj, Pi(vb)));
+            }
+        }
+        return Formula.Any(terms);
+    }
+
+    // value(T at (i,j)) == value(Tᵖ at (i,j)).
+    private static Formula EqualAt(int n, int k, int i, int j, int pi, int pj)
+    {
+        int Pi(int x) => x == k ? k + 1 : x == k + 1 ? k : x;
+        var terms = new List<Formula>();
+        for (var v = 0; v < n; v++)
+        {
+            terms.Add(M(i, j, v) & M(pi, pj, Pi(v)));
+        }
+        return Formula.Any(terms);
     }
 
     private static void AddSpecConstraints(List<Formula> clauses, int n, GroupSpec? spec)

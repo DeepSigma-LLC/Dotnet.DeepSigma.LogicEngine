@@ -64,16 +64,44 @@ public static class GroupFinder
     /// <summary>One representative group per isomorphism class of the given order.</summary>
     public static IReadOnlyList<GroupTable> GroupsUpToIsomorphism(int order, GroupSpec? spec = null)
     {
+        // Lex-leader pruning reduces the labeled models explored; canonical-key dedup
+        // remains the exact-count guarantee. Enumerate over the product variables only
+        // so the lex-leader auxiliary variables don't multiply the enumeration.
+        var lexSpec = (spec ?? new GroupSpec()) with { UseLexLeader = true };
+        var formula = GroupSatEncoder.Encode(order, lexSpec);
+        var projection = ProductVariables(order);
+
         var seen = new HashSet<string>(StringComparer.Ordinal);
         var representatives = new List<GroupTable>();
-        foreach (var table in EnumerateGroups(order, spec))
+        foreach (var model in Reasoner.EnumerateModels(formula, projection))
         {
+            var table = GroupModelDecoder.Decode(model, order);
+            if (spec is not null && !PostFilterMatches(table, spec))
+            {
+                continue;
+            }
             if (seen.Add(table.CanonicalKey()))
             {
                 representatives.Add(table);
             }
         }
         return representatives;
+    }
+
+    private static HashSet<string> ProductVariables(int order)
+    {
+        var names = new HashSet<string>(StringComparer.Ordinal);
+        for (var i = 0; i < order; i++)
+        {
+            for (var j = 0; j < order; j++)
+            {
+                for (var k = 0; k < order; k++)
+                {
+                    names.Add(GroupSatEncoder.VarName(i, j, k));
+                }
+            }
+        }
+        return names;
     }
 
     /// <summary>The number of groups of the given order up to isomorphism.</summary>

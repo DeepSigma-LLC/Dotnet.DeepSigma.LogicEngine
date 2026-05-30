@@ -1,6 +1,6 @@
 # Dotnet.DeepSigma.LogicEngine
 
-A .NET 10 **multi-logic reasoning engine**. It started as a propositional satisfiability / entailment library and grew into a broad reasoning stack — propositional, SMT, optimization, temporal, modal, fuzzy, probabilistic, finite-set, and finite-group — built on a shared SAT/SMT core:
+A .NET 10 **multi-logic reasoning engine**. It started as a propositional satisfiability / entailment library and grew into a broad reasoning stack — propositional, SMT (incl. integer arithmetic), first-order, optimization, temporal, modal, fuzzy, probabilistic, finite-set, and finite-group — built on a shared SAT/SMT core:
 
 - A **formula language** with a text parser, pretty-printer, evaluator, simplifier, and truth tables.
 - Normal-form transformations — **NNF, CNF (classical + Tseitin), DNF**.
@@ -10,7 +10,8 @@ A .NET 10 **multi-logic reasoning engine**. It started as a propositional satisf
 - **Horn-clause** forward and backward chaining with proof trees.
 - **Cardinality constraints** — pairwise/binomial (model-counting safe) and a linear **sequential-counter** encoding.
 - **DIMACS** CNF read/write.
-- **SMT** via a generic lazy **DPLL(T)** framework with two theories: **EUF** (equality + uninterpreted functions + predicates, proof-producing congruence closure) and **LRA** (linear real arithmetic, exact-rational simplex).
+- **SMT** via a generic lazy **DPLL(T)** framework with theories: **EUF** (equality + uninterpreted functions + predicates, proof-producing congruence closure), **LRA** (linear real arithmetic, exact-rational simplex), and **LIA** (linear integer arithmetic via branch-and-bound over a bounded domain, with model extraction).
+- **First-order logic** — a resolution refutation prover (quantifiers, unification, Skolemizing clausifier, equality via congruence axioms) with an honest semi-decidability verdict (`Proved` / `Saturated` / `Unknown`).
 - **MaxSAT** — core-guided weighted partial optimization (find the *best* model, not just any).
 - **Temporal logic** — **LTL** bounded model checking (satisfiability and counterexample traces over transition systems).
 - **Modal logic** — **K / T / B / S4 / S5** validity and satisfiability via bounded Kripke-model construction.
@@ -21,7 +22,7 @@ A .NET 10 **multi-logic reasoning engine**. It started as a propositional satisf
 
 Most capabilities follow one pattern — **encode into the SAT/SMT core, solve, decode** — so the heavy machinery (CDCL, DPLL(T), the exact simplex) is shared and the breadth is mostly thin, well-tested front-ends.
 
-Pure managed code; its one dependency, [DeepSigma.Mathematics](https://github.com/DeepSigma-LLC/Dotnet.DeepSigma.Mathematics) (exact-rational arithmetic, a simplex for LRA, an exact LP optimizer with duals for PSAT, finite-group `GroupTable` algebra, and discrete Bayesian-network inference), is also managed. Builds warnings-as-errors and ships with **398 tests** (plus the exact-arithmetic, LP-optimizer, group-algebra, and graphical-model tests in DeepSigma.Mathematics). Correctness is anchored by **differential testing** — each engine is checked against an independent brute-force oracle.
+Pure managed code; its one dependency, [DeepSigma.Mathematics](https://github.com/DeepSigma-LLC/Dotnet.DeepSigma.Mathematics) (exact-rational arithmetic, a simplex for LRA, an exact LP optimizer with duals for PSAT, finite-group `GroupTable` algebra, and discrete Bayesian-network inference), is also managed. Builds warnings-as-errors and ships with **428 tests** (plus the exact-arithmetic, LP-optimizer, group-algebra, and graphical-model tests in DeepSigma.Mathematics). Correctness is anchored by **differential testing** — each engine is checked against an independent brute-force oracle.
 
 ---
 
@@ -43,6 +44,8 @@ Pure managed code; its one dependency, [DeepSigma.Mathematics](https://github.co
 - [Horn clauses](#horn-clauses)
 - [SMT-lite: equality + uninterpreted functions (EUF)](#smt-lite-equality--uninterpreted-functions-euf)
 - [SMT-lite: linear real arithmetic (LRA)](#smt-lite-linear-real-arithmetic-lra)
+- [SMT-lite: linear integer arithmetic (LIA)](#smt-lite-linear-integer-arithmetic-lia)
+- [First-order logic](#first-order-logic)
 - [MaxSAT: optimization](#maxsat-optimization)
 - [Temporal logic (LTL) and bounded model checking](#temporal-logic-ltl-and-bounded-model-checking)
 - [Modal logic (K/T/B/S4/S5)](#modal-logic-ktbs4s5)
@@ -101,7 +104,8 @@ src/DeepSigma.LogicEngine/        the library
   Reasoning/       Reasoner, WeightedModelCounter, ResolutionRefuter, Horn chaining
   Encoding/        Cardinality, SequentialCounter
   Transitions/     TransitionSystem, Unroller (BMC substrate)
-  Smt/             Term, SmtFormula, EUF + LRA theories, EufSolver, LraSolver, parsers
+  Smt/             Term, SmtFormula, EUF + LRA + LIA theories, EufSolver, LraSolver, LiaSolver, parsers
+  FirstOrder/      FolTerm/FolFormula, parser, unification, clausifier, FirstOrderProver
   Temporal/        LtlFormula, LtlParser, BoundedModelChecker
   Modal/           ModalFormula, ModalParser, ModalSolver (K/T/B/S4/S5)
   Fuzzy/           FuzzyFormula, FuzzySolver (Gödel / Łukasiewicz over LRA)
@@ -123,7 +127,8 @@ using DeepSigma.LogicEngine.Cnf;          // Dimacs, CnfTransformer, Literal, Cn
 using DeepSigma.LogicEngine.Solvers;      // SatResult, DpllSolver, TruthTableSolver
 using DeepSigma.LogicEngine.Solvers.Cdcl; // CdclSolver, IncrementalCdclSolver
 using DeepSigma.LogicEngine.Encoding;     // Cardinality, SequentialCounter
-using DeepSigma.LogicEngine.Smt;          // EufSolver, LraSolver, SmtFormula, Term, LraParser
+using DeepSigma.LogicEngine.Smt;          // EufSolver, LraSolver, LiaSolver, SmtFormula, Term, LraParser
+using DeepSigma.LogicEngine.FirstOrder;   // FolFormula, FolTerm, FirstOrderProver, Unifier
 using DeepSigma.LogicEngine.Solvers.MaxSat; // MaxSatSolver, SoftClause
 using DeepSigma.LogicEngine.Transitions;  // TransitionSystem, Unroller
 using DeepSigma.LogicEngine.Temporal;     // LtlFormula, LtlParser, BoundedModelChecker
@@ -517,6 +522,47 @@ LraSolver.IsSatisfiable(LraParser.Parse("x > 0 & x < 1"));                  // T
 
 ---
 
+## SMT-lite: linear integer arithmetic (LIA)
+
+The same DPLL(T) loop with a **branch-and-bound** theory decides linear arithmetic over the **integers**: solve the rational relaxation, and if a variable that must be integral takes a fractional value, branch and recurse. Named integer variables are confined to a configurable box `[−bound, bound]` (so the search terminates and is complete within the box); any other variables stay real, so mixed integer–real systems work. `FindModel` returns the satisfying integer assignment.
+
+```csharp
+using DeepSigma.LogicEngine.Smt;
+
+var f = LraParser.Parse("2*x = 1");
+LraSolver.IsSatisfiable(f);                       // True  — x = 1/2 over the reals
+LiaSolver.IsSatisfiable(f, new[] { "x" });        // False — no integer x
+
+var model = LiaSolver.FindModel(LraParser.Parse("3*x + 5*y = 7"), new[] { "x", "y" }, bound: 20);
+// e.g. x = 4, y = -1   (3·4 + 5·(-1) = 7)
+```
+
+The relaxation pre-check still settles many unbounded cases definitely (an infeasible relaxation is UNSAT regardless of the box). Integer constraints are reused from the LRA parser; the integer variables are supplied to the solver.
+
+---
+
+## First-order logic
+
+A **resolution refutation** theorem prover over first-order logic: terms with real variables, function symbols, predicates, equality, and the quantifiers ∀/∃. A formula is clausified (NNF → standardize-apart → Skolemize → CNF), then a given-clause saturation loop applies binary resolution and factoring modulo **unification**; deriving the empty clause refutes the set. Equality is handled by adding congruence axioms. Validity and entailment are decided by refuting the negated goal.
+
+```csharp
+using DeepSigma.LogicEngine.FirstOrder;
+
+// Syllogism: ∀x (Man x → Mortal x), Man(socrates) ⊢ Mortal(socrates)
+FirstOrderProver.Entails(
+    new[] { FolFormula.Parse("forall x. (Man(x) -> Mortal(x))"), FolFormula.Parse("Man(socrates)") },
+    FolFormula.Parse("Mortal(socrates)"));                         // Proved
+
+FirstOrderProver.Entails(new[] { FolFormula.Parse("a = b"), FolFormula.Parse("b = c") },
+    FolFormula.Parse("a = c"));                                    // Proved (via equality axioms)
+
+FirstOrderProver.IsValid(FolFormula.Parse("(exists x. P(x)) -> (forall x. P(x))")); // Saturated (not valid)
+```
+
+First-order validity is only **semi-decidable**, so a verdict is `Proved` (valid / refuted), `Saturated` (a model exists — not valid), or `Unknown` (clause budget exhausted). The prover is sound and refutation-complete within the budget.
+
+---
+
 ## MaxSAT: optimization
 
 Find the assignment that satisfies all hard clauses and **minimizes** the total weight of unsatisfied soft clauses (core-guided weighted partial MaxSAT, built on the incremental solver + cardinality encoders).
@@ -743,7 +789,7 @@ The other parsers share these connectives and add their own atoms/operators:
 
 ## Limitations
 
-- **Logics covered:** propositional, SMT (EUF, LRA), MaxSAT, LTL, modal K/T/B/S4/S5, fuzzy (Gödel/Łukasiewicz), probabilistic (PSAT), finite-set, and finite-group. No first-order quantifiers; no integer arithmetic (LIA), arrays, bit-vectors, or theory combination (an SMT solve uses one theory); no CTL/QBF/ASP.
+- **Logics covered:** propositional, SMT (EUF, LRA, LIA), first-order logic, MaxSAT, LTL, modal K/T/B/S4/S5, fuzzy (Gödel/Łukasiewicz), probabilistic (PSAT), finite-set, and finite-group. No arrays/bit-vectors, no theory combination (an SMT solve uses one theory); no CTL/QBF/ASP. First-order proving is semi-decidable (budgeted `Unknown`); LIA is decided within a bounded integer box.
 - **Finite-set** cardinality reasoning and **finite-group** model finding are bounded/finite: set cardinality is decided relative to the universe size, and group search scales with an O(n⁶) associativity encoding (existence to ~order 10, isomorphism counting to ~order 8).
 - **Bounded methods** (LTL BMC, modal) are complete only up to their search bound.
 - EUF/LRA theory solvers are **rebuild-per-check** with no incremental push/pop or eager theory propagation — fine for teaching and modest problems, not tuned for large industrial instances.
@@ -761,7 +807,7 @@ dotnet test                                    # 398 tests
 dotnet run --project samples/DeepSigma.LogicEngine.Demo
 ```
 
-Correctness rests on **differential testing**: each engine is checked against an independent brute-force oracle — CDCL/DPLL vs the truth-table solver, MaxSAT vs brute-force optimum, weighted counting vs enumeration, the LTL encoder vs a lasso-trace simulator, the modal encoder vs a Kripke-model enumerator, fuzzy validity vs a [0,1]-grid evaluator, PSAT column generation vs exact possible-world enumeration, the finite-set encoder vs brute-force interpretation enumeration, and the group finder vs brute-force Cayley-table enumeration, plus DIMACS benchmarks with known verdicts and the EUF/LRA conflict-core tests against canonical facts.
+Correctness rests on **differential testing**: each engine is checked against an independent brute-force oracle — CDCL/DPLL vs the truth-table solver, MaxSAT vs brute-force optimum, weighted counting vs enumeration, the LTL encoder vs a lasso-trace simulator, the modal encoder vs a Kripke-model enumerator, fuzzy validity vs a [0,1]-grid evaluator, PSAT column generation vs exact possible-world enumeration, the finite-set encoder vs brute-force interpretation enumeration, the group finder vs brute-force Cayley-table enumeration, LIA vs integer-box enumeration, and the first-order prover vs a finite-model oracle (it must never refute a satisfiable set), plus DIMACS benchmarks with known verdicts and the EUF/LRA conflict-core tests against canonical facts.
 
 ---
 
@@ -769,8 +815,9 @@ Correctness rests on **differential testing**: each engine is checked against an
 
 Documented future directions (some noted as hooks in the code):
 
-- **CTL** model checking; **integer arithmetic (LIA)** via branch-and-bound on the exact simplex.
+- **CTL** model checking; unbounded LIA via the Omega test (the current LIA is bounded).
 - **Theory combination** (Nelson–Oppen, e.g. EUF + LRA together); eager theory propagation; push/pop incremental theory state.
+- First-order refinements: paramodulation for built-in equality, set-of-support/ordered resolution, and a finite model finder.
 - Scalable model counting via **d-DNNF** knowledge compilation.
 
 ---

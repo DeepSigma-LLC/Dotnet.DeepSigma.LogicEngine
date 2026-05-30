@@ -126,6 +126,49 @@ public static class Reasoner
     }
 
     /// <summary>
+    /// Enumerate the distinct assignments of a <paramref name="projection"/> of the
+    /// variables that extend to a model — blocking clauses are added over the
+    /// projection only, so two full models that agree on the projection are
+    /// reported once. Useful when auxiliary variables should not multiply the
+    /// enumeration (e.g. counting structures up to a symmetry).
+    /// </summary>
+    public static IEnumerable<Model> EnumerateModels(Formula formula, IReadOnlySet<string> projection)
+    {
+        var originalVars = Evaluator.Variables(formula);
+        var projected = projection.Where(originalVars.Contains).ToHashSet(StringComparer.Ordinal);
+        if (projected.Count == 0)
+        {
+            if (IsSatisfiable(formula))
+            {
+                yield return Model.Empty;
+            }
+            yield break;
+        }
+
+        var prepared = CnfPreparer.Prepare(formula);
+        var solver = new IncrementalCdclSolver(prepared.Cnf, originalVars);
+
+        while (true)
+        {
+            var result = solver.Solve();
+            if (!result.IsSatisfiable || result.Model is null)
+            {
+                yield break;
+            }
+            var model = CnfPreparer.Project(result.Model, projected);
+            yield return model;
+
+            var blocking = projected
+                .Select(name => model[name] ? Literal.Negative(name) : Literal.Positive(name))
+                .ToList();
+            if (!solver.AddClause(blocking))
+            {
+                yield break;
+            }
+        }
+    }
+
+    /// <summary>
     /// Enumerate models using a caller-supplied engine. Rebuilds the working
     /// clause set each iteration, so it works with any <see cref="ISatSolver"/>.
     /// </summary>

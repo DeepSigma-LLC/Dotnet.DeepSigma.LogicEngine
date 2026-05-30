@@ -20,6 +20,13 @@ public sealed record GroupSpec
     /// <summary>If set, require an element of each listed order to exist.</summary>
     public IReadOnlyList<int>? RequiredElementOrders { get; init; }
 
+    /// <summary>
+    /// Add (sound, partial) lex-leader symmetry-breaking clauses to prune relabelings
+    /// when enumerating/counting. Never affects correctness — counting still dedups by
+    /// isomorphism class — it only reduces the number of labeled models explored.
+    /// </summary>
+    public bool UseLexLeader { get; init; }
+
     /// <summary>True if any requirement must be checked on the decoded group rather than in SAT.</summary>
     internal bool HasPostFilter => Cyclic is not null || Exponent is not null || RequiredElementOrders is not null;
 }

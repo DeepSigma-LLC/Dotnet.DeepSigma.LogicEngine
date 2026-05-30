@@ -33,6 +33,13 @@ public class GroupFinderTests
         Assert.Equal(expected, GroupFinder.CountGroupsUpToIsomorphism(order));
     }
 
+    [Fact]
+    public void CountGroups_OrderSeven_IsOne()
+    {
+        // Order 7 is prime → exactly one group (ℤ₇); feasible to count thanks to lex-leader pruning.
+        Assert.Equal(1, GroupFinder.CountGroupsUpToIsomorphism(7));
+    }
+
     [Theory]
     [InlineData(2)]
     [InlineData(3)]
