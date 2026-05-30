@@ -1,0 +1,6 @@
+c A small satisfiable instance.
+c Forces x1=false, then x2=false, then x3=true.
+p cnf 3 3
+1 -2 0
+2 3 0
+-1 0

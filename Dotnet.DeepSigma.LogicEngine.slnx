@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/samples/">
+    <Project Path="samples/DeepSigma.LogicEngine.Demo/DeepSigma.LogicEngine.Demo.csproj" />
+    <Project Path="samples/DeepSigma.LogicEngine.Recipes/DeepSigma.LogicEngine.Recipes.csproj" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/DeepSigma.LogicEngine/DeepSigma.LogicEngine.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/DeepSigma.LogicEngine.Tests/DeepSigma.LogicEngine.Tests.csproj" />
+  </Folder>
+</Solution>

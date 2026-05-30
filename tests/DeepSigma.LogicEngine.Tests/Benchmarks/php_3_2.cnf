@@ -1,0 +1,15 @@
+c Pigeonhole: 3 pigeons into 2 holes. Unsatisfiable.
+c Variable x(p,h) = (p-1)*2 + h.
+p cnf 6 9
+c each pigeon in at least one hole
+1 2 0
+3 4 0
+5 6 0
+c hole 1 holds at most one pigeon
+-1 -3 0
+-1 -5 0
+-3 -5 0
+c hole 2 holds at most one pigeon
+-2 -4 0
+-2 -6 0
+-4 -6 0
