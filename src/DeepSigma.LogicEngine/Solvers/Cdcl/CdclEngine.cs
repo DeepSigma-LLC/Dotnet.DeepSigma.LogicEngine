@@ -43,7 +43,7 @@ internal sealed class CdclEngine
         _clauses = new ClauseDatabase(options.ClauseDecay);
         _vsids = new VsidsHeap(variableCount, options.VariableDecay);
         _propagator = new UnitPropagator(_trail, _watches, _clauses, Statistics);
-        _analyzer = new ConflictAnalyzer(_trail, _clauses, _vsids);
+        _analyzer = new ConflictAnalyzer(_trail, _clauses, _vsids, options.MinimizeLearnedClauses);
         _reducer = new ClauseReducer(_clauses, _watches, _trail, Statistics, options);
         _restoreToHeap = _vsids.InsertIfAbsent;
     }
@@ -134,8 +134,7 @@ internal sealed class CdclEngine
         }
         _trail.CancelUntil(0, _restoreToHeap);
 
-        var restart = new LubyRestartSchedule(_options.RestartUnit);
-        var conflictsSinceRestart = 0;
+        var restart = CreateRestartPolicy();
 
         while (true)
         {
@@ -145,20 +144,18 @@ internal sealed class CdclEngine
             if (conflict is not null)
             {
                 Statistics.Conflicts++;
-                conflictsSinceRestart++;
                 if (_trail.DecisionLevel == 0)
                 {
                     _rootConflict = true;
                     return SearchOutcome.RootUnsat;
                 }
-                HandleConflict(conflict);
+                restart.OnConflict(HandleConflict(conflict));
             }
-            else if (conflictsSinceRestart >= restart.CurrentBudget)
+            else if (restart.ShouldRestart())
             {
                 Statistics.Restarts++;
                 _trail.CancelUntil(0, _restoreToHeap);
-                restart.Advance();
-                conflictsSinceRestart = 0;
+                restart.OnRestart();
             }
             else
             {
@@ -181,7 +178,14 @@ internal sealed class CdclEngine
 
     public bool IsTrue(int variable) => _trail.Value(variable) == LBool.True;
 
-    private void HandleConflict(CdclClause conflict)
+    private IRestartPolicy CreateRestartPolicy() => _options.RestartStrategy switch
+    {
+        RestartStrategy.Glucose => new GlucoseRestartPolicy(),
+        _ => new LubyRestartPolicy(_options.RestartUnit),
+    };
+
+    /// <summary>Analyze a conflict, learn, backjump, and return the learned clause's LBD.</summary>
+    private int HandleConflict(CdclClause conflict)
     {
         var conflictLevel = _trail.DecisionLevel;
         var learned = _analyzer.Analyze(conflict);
@@ -197,6 +201,7 @@ internal sealed class CdclEngine
         {
             _reducer.Reduce();
         }
+        return learned.Lbd;
     }
 
     private void LearnAndAssert(LearnedClause learned)
@@ -208,7 +213,7 @@ internal sealed class CdclEngine
             _trail.Enqueue(literals[0], reason: null);
             return;
         }
-        var clause = _clauses.AddLearned(literals);
+        var clause = _clauses.AddLearned(literals, learned.Lbd);
         _watches.AttachClause(clause);
         _trail.Enqueue(literals[0], clause);
     }

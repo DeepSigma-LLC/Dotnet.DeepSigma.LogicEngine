@@ -12,6 +12,13 @@ internal sealed class CdclClause
     public bool Learned { get; }
     public double Activity { get; set; }
 
+    /// <summary>
+    /// Literal block distance: the number of distinct decision levels among the
+    /// clause's literals at the moment it was learned. Low LBD ("glue") clauses
+    /// are the most valuable to keep. Zero for original clauses.
+    /// </summary>
+    public int Lbd { get; set; }
+
     public CdclClause(int[] literals, bool learned)
     {
         Literals = literals;

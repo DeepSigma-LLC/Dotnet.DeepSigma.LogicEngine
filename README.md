@@ -1,10 +1,10 @@
 # Dotnet.DeepSigma.LogicEngine
 
-A .NET 10 **multi-logic reasoning engine**. It started as a propositional satisfiability / entailment library and grew into a broad reasoning stack — propositional, SMT, optimization, temporal, and modal — built on a shared SAT/SMT core:
+A .NET 10 **multi-logic reasoning engine**. It started as a propositional satisfiability / entailment library and grew into a broad reasoning stack — propositional, SMT, optimization, temporal, modal, fuzzy, and probabilistic — built on a shared SAT/SMT core:
 
 - A **formula language** with a text parser, pretty-printer, evaluator, simplifier, and truth tables.
 - Normal-form transformations — **NNF, CNF (classical + Tseitin), DNF**.
-- Three SAT solvers: a brute-force **truth-table** oracle, classic **DPLL**, and a modern **CDCL** solver (watched literals, 1-UIP clause learning, VSIDS, Luby restarts, learned-clause deletion) with an **incremental** variant supporting assumptions and unsat cores.
+- Three SAT solvers: a brute-force **truth-table** oracle, classic **DPLL**, and a modern **CDCL** solver (watched literals, 1-UIP clause learning with recursive **clause minimization**, VSIDS, **LBD**-based clause deletion, Luby or adaptive **Glucose** restarts) with an **incremental** variant supporting assumptions and unsat cores.
 - High-level **reasoning**: satisfiability, validity, equivalence, entailment, model finding/enumeration, model counting, and **weighted model counting / satisfaction probability**.
 - A **resolution** refutation prover with set-of-support and subsumption, producing readable proofs.
 - **Horn-clause** forward and backward chaining with proof trees.
@@ -14,10 +14,12 @@ A .NET 10 **multi-logic reasoning engine**. It started as a propositional satisf
 - **MaxSAT** — core-guided weighted partial optimization (find the *best* model, not just any).
 - **Temporal logic** — **LTL** bounded model checking (satisfiability and counterexample traces over transition systems).
 - **Modal logic** — **K / T / B / S4 / S5** validity and satisfiability via bounded Kripke-model construction.
+- **Fuzzy logic** — many-valued **Gödel** and **Łukasiewicz** validity/satisfiability, reduced to linear real arithmetic over the existing LRA stack (exact, [0,1]-valued).
+- **Probabilistic SAT (PSAT)** — coherence checking and exact probability **bounds** for constraints over logical formulas, with no independence assumptions; solved as an exact linear program, and scalably via **column generation** (LP duals + MaxSAT pricing).
 
 Most capabilities follow one pattern — **encode into the SAT/SMT core, solve, decode** — so the heavy machinery (CDCL, DPLL(T), the exact simplex) is shared and the breadth is mostly thin, well-tested front-ends.
 
-Pure managed code; its one dependency, [DeepSigma.Mathematics](https://github.com/DeepSigma-LLC/Dotnet.DeepSigma.Mathematics) (exact-rational arithmetic + simplex for LRA, and discrete Bayesian-network inference), is also managed. Builds warnings-as-errors and ships with **315 tests** (plus the exact-arithmetic and graphical-model tests in DeepSigma.Mathematics). Correctness is anchored by **differential testing** — each engine is checked against an independent brute-force oracle.
+Pure managed code; its one dependency, [DeepSigma.Mathematics](https://github.com/DeepSigma-LLC/Dotnet.DeepSigma.Mathematics) (exact-rational arithmetic, a simplex for LRA, an exact LP optimizer with duals for PSAT, and discrete Bayesian-network inference), is also managed. Builds warnings-as-errors and ships with **344 tests** (plus the exact-arithmetic, LP-optimizer, and graphical-model tests in DeepSigma.Mathematics). Correctness is anchored by **differential testing** — each engine is checked against an independent brute-force oracle.
 
 ---
 
@@ -42,6 +44,8 @@ Pure managed code; its one dependency, [DeepSigma.Mathematics](https://github.co
 - [MaxSAT: optimization](#maxsat-optimization)
 - [Temporal logic (LTL) and bounded model checking](#temporal-logic-ltl-and-bounded-model-checking)
 - [Modal logic (K/T/B/S4/S5)](#modal-logic-ktbs4s5)
+- [Fuzzy logic (Gödel / Łukasiewicz)](#fuzzy-logic-gödel--łukasiewicz)
+- [Probabilistic SAT (PSAT)](#probabilistic-sat-psat)
 - [Worked examples (samples)](#worked-examples-samples)
 - [Operator and syntax reference](#operator-and-syntax-reference)
 - [Performance notes](#performance-notes)
@@ -96,6 +100,8 @@ src/DeepSigma.LogicEngine/        the library
   Smt/             Term, SmtFormula, EUF + LRA theories, EufSolver, LraSolver, parsers
   Temporal/        LtlFormula, LtlParser, BoundedModelChecker
   Modal/           ModalFormula, ModalParser, ModalSolver (K/T/B/S4/S5)
+  Fuzzy/           FuzzyFormula, FuzzySolver (Gödel / Łukasiewicz over LRA)
+  Probabilistic/   ProbabilityConstraint, PsatSolver (coherence + bounds; column generation)
 tests/DeepSigma.LogicEngine.Tests/    xUnit v3 test suite (+ DIMACS benchmarks)
 samples/DeepSigma.LogicEngine.Demo/    guided feature walkthrough
 samples/DeepSigma.LogicEngine.Recipes/ N-queens, Sudoku, graph coloring
@@ -116,6 +122,8 @@ using DeepSigma.LogicEngine.Solvers.MaxSat; // MaxSatSolver, SoftClause
 using DeepSigma.LogicEngine.Transitions;  // TransitionSystem, Unroller
 using DeepSigma.LogicEngine.Temporal;     // LtlFormula, LtlParser, BoundedModelChecker
 using DeepSigma.LogicEngine.Modal;        // ModalFormula, ModalParser, ModalSolver, ModalSystem
+using DeepSigma.LogicEngine.Fuzzy;        // FuzzyFormula, FuzzySolver, FuzzyLogic
+using DeepSigma.LogicEngine.Probabilistic; // ProbabilityConstraint, PsatSolver
 ```
 
 ---
@@ -574,6 +582,59 @@ Systems: `K` (any frame), `T` (reflexive), `B` (reflexive+symmetric), `S4` (refl
 
 ---
 
+## Fuzzy logic (Gödel / Łukasiewicz)
+
+Many-valued logic where truth values range over the real interval **[0, 1]** rather than {true, false}. Connectives are interpreted by a t-norm family, and `FuzzySolver` decides validity (the value is ≥ a threshold under *every* assignment) and satisfiability (≥ the threshold under *some* assignment). Each subformula's value becomes a real variable constrained by the piecewise-linear t-norm semantics, so the question reduces to **linear real arithmetic** and is solved exactly by the existing LRA stack.
+
+```csharp
+using DeepSigma.LogicEngine.Fuzzy;
+using DeepSigma.Mathematics.Algebra;
+
+var p = FuzzyFormula.Var("p");
+
+// Excluded middle holds in Łukasiewicz (x + (1-x) ≥ 1) but not in Gödel (max(x, 1-x)).
+FuzzySolver.IsValid(p | !p, FuzzyLogic.Lukasiewicz);   // True
+FuzzySolver.IsValid(p | !p, FuzzyLogic.Godel);         // False
+
+// Is there an assignment giving the conjunction value ≥ 1/2?
+var conj = FuzzyFormula.Var("p") & FuzzyFormula.Var("q");
+FuzzySolver.IsSatisfiable(conj, FuzzyLogic.Godel, Rational.Of(1, 2)); // True
+```
+
+Semantics: **Gödel** — AND = min, OR = max, → = (x ≤ y ? 1 : y); **Łukasiewicz** — AND = max(0, x+y−1), OR = min(1, x+y), → = min(1, 1−x+y); both use ¬x = 1−x. The product t-norm (nonlinear) is out of scope. The default threshold is 1 (a fuzzy tautology); pass any rational to ask about other cut levels.
+
+---
+
+## Probabilistic SAT (PSAT)
+
+Reason about **probabilities of logical formulas** without independence or structural assumptions. Given constraints like *P(p) = 1/2* and *P(p → q) = 1*, `PsatSolver` decides whether they are jointly **coherent** (some probability distribution over truth assignments satisfies them all) and computes the tightest **bounds** on a query. A distribution assigns mass to each possible world; the constraints become a linear program over those masses, solved exactly by the rational LP optimizer — so verdicts and bounds are exact fractions.
+
+```csharp
+using DeepSigma.LogicEngine.Probabilistic;
+using DeepSigma.LogicEngine.Formulas;
+using DeepSigma.Mathematics.Algebra;
+
+// Probabilistic modus ponens: P(p) = 1/2, P(p -> q) = 1  ⇒  P(q) ∈ [1/2, 1].
+var kb = new[]
+{
+    ProbabilityConstraint.Exactly(Formula.Parse("p"), Rational.Of(1, 2)),
+    ProbabilityConstraint.Exactly(Formula.Parse("p -> q"), Rational.Of(1, 1)),
+};
+PsatSolver.IsConsistent(kb);                 // True
+var (low, high) = PsatSolver.Bounds(kb, Formula.Parse("q")).Value;  // 1/2 .. 1
+
+// Incoherent: complementary events must sum to 1.
+PsatSolver.IsConsistent(new[]
+{
+    ProbabilityConstraint.Exactly(Formula.Parse("p"), Rational.Of(3, 10)),
+    ProbabilityConstraint.Exactly(Formula.Parse("!p"), Rational.Of(1, 2)),
+});                                           // False
+```
+
+`Bounds` recovers classic results exactly — Fréchet inequalities for conjunction/disjunction, probabilistic modus ponens — and returns `null` when the constraints are incoherent. The possible-world LP has exponentially many columns; `IsConsistentScalable` and `BoundsScalable` avoid enumerating them via **column generation**: they solve a small restricted LP and use its exact dual prices to price the next world to add (the pricing step is a MaxSAT call), matching the enumeration verdict and bounds for equality constraints. PSAT is NP-hard but decidable; the exact LP optimizer (with duals) that powers it lives in DeepSigma.Mathematics for reuse.
+
+---
+
 ## Worked examples (samples)
 
 Two runnable console projects:
@@ -622,12 +683,14 @@ The other parsers share these connectives and add their own atoms/operators:
 - **Model enumeration/counting** is bounded by the number of models (blocking-clause loop on an incremental solver).
 - **Resolution** and the **binomial cardinality** encoding can blow up on hard inputs; resolution is bounded by a configurable clause cap, and a linear cardinality encoding is available for large `k`.
 - **Temporal (BMC)** and **modal** search are bounded: a witness/countermodel found is real, but "not found up to the bound" is not a general proof of unsatisfiability (it relies on the finite-model property holding within the bound).
+- **Fuzzy** reasoning is exact but limited to the (piecewise-linear) Gödel and Łukasiewicz t-norms; the product t-norm is nonlinear and out of scope.
+- **PSAT** `IsConsistent`/`Bounds` enumerate possible worlds (exact, exponential in the atom count); `IsConsistentScalable` uses column generation for equality constraints.
 
 ---
 
 ## Limitations
 
-- **Logics covered:** propositional, SMT (EUF, LRA), MaxSAT, LTL, and modal K/T/B/S4/S5. No first-order quantifiers; no integer arithmetic (LIA), arrays, bit-vectors, or theory combination (an SMT solve uses one theory); no CTL/QBF/ASP.
+- **Logics covered:** propositional, SMT (EUF, LRA), MaxSAT, LTL, modal K/T/B/S4/S5, fuzzy (Gödel/Łukasiewicz), and probabilistic (PSAT). No first-order quantifiers; no integer arithmetic (LIA), arrays, bit-vectors, or theory combination (an SMT solve uses one theory); no CTL/QBF/ASP.
 - **Bounded methods** (LTL BMC, modal) are complete only up to their search bound.
 - EUF/LRA theory solvers are **rebuild-per-check** with no incremental push/pop or eager theory propagation — fine for teaching and modest problems, not tuned for large industrial instances.
 - The solvers are **single-threaded** and allocate managed objects; they are not a drop-in replacement for MiniSAT/Z3 on competition benchmarks.
@@ -640,11 +703,11 @@ These are deliberate scope boundaries, not bugs — see the roadmap.
 
 ```bash
 dotnet build                                   # warnings-as-errors, net10.0
-dotnet test                                    # 315 tests
+dotnet test                                    # 344 tests
 dotnet run --project samples/DeepSigma.LogicEngine.Demo
 ```
 
-Correctness rests on **differential testing**: each engine is checked against an independent brute-force oracle — CDCL/DPLL vs the truth-table solver, MaxSAT vs brute-force optimum, weighted counting vs enumeration, the LTL encoder vs a lasso-trace simulator, the modal encoder vs a Kripke-model enumerator, plus DIMACS benchmarks with known verdicts and the EUF/LRA conflict-core tests against canonical facts.
+Correctness rests on **differential testing**: each engine is checked against an independent brute-force oracle — CDCL/DPLL vs the truth-table solver, MaxSAT vs brute-force optimum, weighted counting vs enumeration, the LTL encoder vs a lasso-trace simulator, the modal encoder vs a Kripke-model enumerator, fuzzy validity vs a [0,1]-grid evaluator, and PSAT column generation vs exact possible-world enumeration, plus DIMACS benchmarks with known verdicts and the EUF/LRA conflict-core tests against canonical facts.
 
 ---
 
@@ -652,11 +715,8 @@ Correctness rests on **differential testing**: each engine is checked against an
 
 Documented future directions (some noted as hooks in the code):
 
-- **Probabilistic SAT (PSAT)** — probability-bound consistency as an LP over possible worlds (column generation: the exact simplex + SAT pricing).
-- **Fuzzy / many-valued logic** — [0,1] truth via t-norms; Gödel/Łukasiewicz reduce to LRA.
 - **CTL** model checking; **integer arithmetic (LIA)** via branch-and-bound on the exact simplex.
 - **Theory combination** (Nelson–Oppen, e.g. EUF + LRA together); eager theory propagation; push/pop incremental theory state.
-- CDCL refinements: clause minimization, LBD-based deletion, glucose-style restarts.
 - Scalable model counting via **d-DNNF** knowledge compilation.
 
 ---

@@ -1,12 +1,15 @@
 using DeepSigma.LogicEngine.Cnf;
 using DeepSigma.LogicEngine.Evaluation;
 using DeepSigma.LogicEngine.Formulas;
+using DeepSigma.LogicEngine.Fuzzy;
+using DeepSigma.LogicEngine.Probabilistic;
 using DeepSigma.LogicEngine.Reasoning;
 using DeepSigma.LogicEngine.Smt;
 using DeepSigma.LogicEngine.Modal;
 using DeepSigma.LogicEngine.Solvers.MaxSat;
 using DeepSigma.LogicEngine.Temporal;
 using DeepSigma.LogicEngine.Transitions;
+using DeepSigma.Mathematics.Algebra;
 
 Section("1. Parsing and pretty-printing");
 {
@@ -199,6 +202,41 @@ Section("14. Modal logic (K/T/S4/S5)");
     var five = ModalParser.Parse("<>p -> []<>p"); // 5 axiom
     Console.WriteLine($"  '{five}' valid in S4? {ModalSolver.IsValid(five, ModalSystem.S4)}");
     Console.WriteLine($"  '{five}' valid in S5? {ModalSolver.IsValid(five, ModalSystem.S5)}");
+}
+
+Section("15. Fuzzy logic (Gödel / Łukasiewicz)");
+{
+    var p = FuzzyFormula.Var("p");
+    var excludedMiddle = p | !p;        // p ∨ ¬p
+    Console.WriteLine($"  'p | !p' a tautology in Gödel?      {FuzzySolver.IsValid(excludedMiddle, FuzzyLogic.Godel)}");
+    Console.WriteLine($"  'p | !p' a tautology in Łukasiewicz? {FuzzySolver.IsValid(excludedMiddle, FuzzyLogic.Lukasiewicz)}");
+
+    // Can a Gödel conjunction reach 1/2? (min(p,q) ≥ 1/2 is achievable)
+    var conj = FuzzyFormula.Var("p") & FuzzyFormula.Var("q");
+    Console.WriteLine($"  Gödel 'p & q' reaches 1/2? {FuzzySolver.IsSatisfiable(conj, FuzzyLogic.Godel, Rational.Of(1, 2))}");
+}
+
+Section("16. Probabilistic SAT (PSAT): coherence and bounds");
+{
+    // P(p) = 1/2 and P(p -> q) = 1 pin P(q) into [1/2, 1].
+    var kb = new[]
+    {
+        ProbabilityConstraint.Exactly(Formula.Parse("p"), Rational.Of(1, 2)),
+        ProbabilityConstraint.Exactly(Formula.Parse("p -> q"), Rational.Of(1, 1)),
+    };
+    Console.WriteLine($"  coherent (enumeration)?      {PsatSolver.IsConsistent(kb)}");
+    Console.WriteLine($"  coherent (column generation)? {PsatSolver.IsConsistentScalable(kb)}");
+    var bounds = PsatSolver.Bounds(kb, Formula.Parse("q"));
+    Console.WriteLine($"  P(q) ∈ [{bounds!.Value.Low}, {bounds.Value.High}]  (probabilistic modus ponens, enumeration)");
+    var scalable = PsatSolver.BoundsScalable(kb, Formula.Parse("q"));
+    Console.WriteLine($"  P(q) ∈ [{scalable!.Value.Low}, {scalable.Value.High}]  (column generation)");
+
+    var incoherent = new[]
+    {
+        ProbabilityConstraint.Exactly(Formula.Parse("p"), Rational.Of(3, 10)),
+        ProbabilityConstraint.Exactly(Formula.Parse("!p"), Rational.Of(1, 2)),
+    };
+    Console.WriteLine($"  P(p)=3/10 & P(!p)=1/2 coherent? {PsatSolver.IsConsistent(incoherent)}");
 }
 
 return;

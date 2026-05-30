@@ -1,6 +1,6 @@
 namespace DeepSigma.LogicEngine.Solvers.Cdcl;
 
-internal readonly record struct LearnedClause(int[] Literals, int BackjumpLevel);
+internal readonly record struct LearnedClause(int[] Literals, int BackjumpLevel, int Lbd);
 
 /// <summary>
 /// First-UIP (Unique Implication Point) conflict analysis. Starting from the
@@ -12,17 +12,23 @@ internal readonly record struct LearnedClause(int[] Literals, int BackjumpLevel)
 /// </summary>
 internal sealed class ConflictAnalyzer
 {
+    /// <summary>Recursion guard for clause minimization (deep implication chains stay bounded).</summary>
+    private const int MinimizeDepthLimit = 1000;
+
     private readonly Trail _trail;
     private readonly ClauseDatabase _clauses;
     private readonly VsidsHeap _vsids;
+    private readonly bool _minimize;
     private bool[] _seen;
     private readonly List<int> _learned = new();
+    private readonly List<int> _touched = new(); // every variable we marked seen, for O(touched) cleanup
 
-    public ConflictAnalyzer(Trail trail, ClauseDatabase clauses, VsidsHeap vsids)
+    public ConflictAnalyzer(Trail trail, ClauseDatabase clauses, VsidsHeap vsids, bool minimize = false)
     {
         _trail = trail;
         _clauses = clauses;
         _vsids = vsids;
+        _minimize = minimize;
         _seen = new bool[trail.VariableCount];
     }
 
@@ -129,16 +135,117 @@ internal sealed class ConflictAnalyzer
 
         _learned[0] = CdclLiterals.Negate(uip);
 
-        // Future refinement: recursive self-subsuming clause minimization would
-        // hook in here, dropping any learned literal whose reason clause is
-        // already implied by the other learned literals (using the live `_seen`
-        // marks). It shrinks learned clauses and improves performance but is not
-        // required for correctness, so it is left out for clarity.
+        // Recursive self-subsuming minimization: drop any learned literal whose
+        // reason is already implied by the rest of the clause. Sound, and shrinks
+        // clauses (smaller clauses propagate more and cost less to keep).
+        if (_minimize)
+        {
+            Minimize();
+        }
 
         var literals = _learned.ToArray();
+        // Put a maximum-level literal in slot 1 so the second watch is sound after
+        // backjumping (slot 0 is the asserting literal, enqueued immediately).
+        PlaceSecondWatch(literals);
         var backjumpLevel = ComputeBackjumpLevel(literals);
-        ClearSeen(literals);
-        return new LearnedClause(literals, backjumpLevel);
+        var lbd = LiteralBlockDistance(literals);
+        ClearMarks();
+        return new LearnedClause(literals, backjumpLevel, lbd);
+    }
+
+    /// <summary>
+    /// Drop redundant literals (indices ≥ 1): a literal is redundant when its
+    /// reason's other literals are all already implied — present in the clause,
+    /// level-0 facts, or themselves recursively redundant. Decisions are never
+    /// redundant. The asserting literal at index 0 is always kept.
+    /// </summary>
+    private void Minimize()
+    {
+        Mark(CdclLiterals.Variable(_learned[0])); // treat the asserting literal as in-clause too
+
+        var kept = new List<int> { _learned[0] };
+        for (var i = 1; i < _learned.Count; i++)
+        {
+            var literal = _learned[i];
+            var variable = CdclLiterals.Variable(literal);
+            if (_trail.ReasonFor(variable) is null || !IsRedundant(variable, depth: 0))
+            {
+                kept.Add(literal);
+            }
+        }
+        _learned.Clear();
+        _learned.AddRange(kept);
+    }
+
+    private bool IsRedundant(int variable, int depth)
+    {
+        if (depth >= MinimizeDepthLimit)
+        {
+            return false; // conservative: keep the literal rather than recurse unbounded
+        }
+        var reason = _trail.ReasonFor(variable);
+        if (reason is null)
+        {
+            return false; // a decision literal cannot be dropped
+        }
+        foreach (var literal in reason.Literals)
+        {
+            var v = CdclLiterals.Variable(literal);
+            if (v == variable || _trail.LevelOf(v) == 0 || _seen[v])
+            {
+                continue; // self, root-implied, or already covered by the clause
+            }
+            if (_trail.ReasonFor(v) is null || !IsRedundant(v, depth + 1))
+            {
+                return false;
+            }
+            Mark(v); // proven redundant ⇒ covered for the rest of this analysis
+        }
+        return true;
+    }
+
+    /// <summary>Swap a highest-decision-level literal into slot 1 (no-op for unit clauses).</summary>
+    private void PlaceSecondWatch(int[] literals)
+    {
+        if (literals.Length < 2)
+        {
+            return;
+        }
+        var best = 1;
+        for (var i = 2; i < literals.Length; i++)
+        {
+            if (_trail.LevelOf(CdclLiterals.Variable(literals[i])) > _trail.LevelOf(CdclLiterals.Variable(literals[best])))
+            {
+                best = i;
+            }
+        }
+        (literals[1], literals[best]) = (literals[best], literals[1]);
+    }
+
+    /// <summary>The number of distinct decision levels among the clause's literals.</summary>
+    private int LiteralBlockDistance(int[] literals)
+    {
+        var levels = new HashSet<int>();
+        foreach (var literal in literals)
+        {
+            levels.Add(_trail.LevelOf(CdclLiterals.Variable(literal)));
+        }
+        return levels.Count;
+    }
+
+    private void Mark(int variable)
+    {
+        _seen[variable] = true;
+        _touched.Add(variable);
+    }
+
+    private void ClearMarks()
+    {
+        foreach (var variable in _touched)
+        {
+            _seen[variable] = false;
+        }
+        _touched.Clear();
     }
 
     /// <summary>
@@ -157,7 +264,7 @@ internal sealed class ConflictAnalyzer
             {
                 continue;
             }
-            _seen[variable] = true;
+            Mark(variable);
             if (_trail.LevelOf(variable) == currentLevel)
             {
                 added++;
@@ -187,13 +294,5 @@ internal sealed class ConflictAnalyzer
             level = Math.Max(level, _trail.LevelOf(CdclLiterals.Variable(literals[i])));
         }
         return level;
-    }
-
-    private void ClearSeen(int[] literals)
-    {
-        foreach (var literal in literals)
-        {
-            _seen[CdclLiterals.Variable(literal)] = false;
-        }
     }
 }

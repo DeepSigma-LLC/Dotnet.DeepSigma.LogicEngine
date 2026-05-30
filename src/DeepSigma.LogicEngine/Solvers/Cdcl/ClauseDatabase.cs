@@ -27,9 +27,9 @@ internal sealed class ClauseDatabase
         return clause;
     }
 
-    public CdclClause AddLearned(int[] literals)
+    public CdclClause AddLearned(int[] literals, int lbd = 0)
     {
-        var clause = new CdclClause(literals, learned: true);
+        var clause = new CdclClause(literals, learned: true) { Lbd = lbd };
         _learned.Add(clause);
         BumpActivity(clause);
         return clause;
