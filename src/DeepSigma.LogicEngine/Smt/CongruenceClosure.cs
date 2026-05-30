@@ -96,6 +96,19 @@ internal sealed class CongruenceClosure
         return null;
     }
 
+    /// <summary>
+    /// True if the asserted facts force <paramref name="a"/> and <paramref name="b"/>
+    /// into the same congruence class. Used by theory combination to read off the
+    /// equalities EUF entails between shared variables.
+    /// </summary>
+    public bool AreEqual(Term a, Term b)
+    {
+        var x = Intern(a);
+        var y = Intern(b);
+        Propagate();
+        return Find(x) == Find(y);
+    }
+
     // --- term interning ---------------------------------------------------
 
     private int Intern(Term term)

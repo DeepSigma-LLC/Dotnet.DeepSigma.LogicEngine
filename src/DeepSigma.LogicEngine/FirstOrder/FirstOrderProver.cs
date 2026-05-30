@@ -6,7 +6,15 @@ public sealed record FolOptions
     /// <summary>Maximum distinct clauses to generate before giving up with <see cref="FolProofStatus.Unknown"/>.</summary>
     public int MaxClauses { get; init; } = 20_000;
 
-    /// <summary>Add equality axioms when the input uses <c>=</c> (so equality is interpreted).</summary>
+    /// <summary>
+    /// Handle equality by <b>paramodulation</b> (with only the reflexivity clause
+    /// <c>x = x</c>). When false, equality is axiomatized instead (reflexivity,
+    /// symmetry, transitivity, congruence) — or, if <see cref="IncludeEqualityAxioms"/>
+    /// is also false, treated as an uninterpreted predicate.
+    /// </summary>
+    public bool UseParamodulation { get; init; } = true;
+
+    /// <summary>Add full equality axioms when the input uses <c>=</c> and paramodulation is off.</summary>
     public bool IncludeEqualityAxioms { get; init; } = true;
 
     public static FolOptions Default { get; } = new();
@@ -27,11 +35,13 @@ public static class FirstOrderProver
     {
         options ??= FolOptions.Default;
         var clauses = Clausifier.ClausifyAll(assertions).ToList();
-        if (options.IncludeEqualityAxioms)
+        if (!options.UseParamodulation && options.IncludeEqualityAxioms)
         {
+            // Paramodulation + reflexivity resolution handle equality natively; the
+            // full axioms are only needed when paramodulation is off.
             clauses.AddRange(EqualityAxioms.For(clauses));
         }
-        return new FirstOrderResolver(options.MaxClauses).Refute(clauses);
+        return new FirstOrderResolver(options.MaxClauses, options.UseParamodulation).Refute(clauses);
     }
 
     /// <summary>Is <paramref name="formula"/> valid? Proved = valid; Saturated = not valid; Unknown = budget.</summary>

@@ -1,6 +1,6 @@
 # Dotnet.DeepSigma.LogicEngine
 
-A .NET 10 **multi-logic reasoning engine**. It started as a propositional satisfiability / entailment library and grew into a broad reasoning stack — propositional, SMT (incl. integer arithmetic), first-order, optimization, temporal, modal, fuzzy, probabilistic, finite-set, and finite-group — built on a shared SAT/SMT core:
+A .NET 10 **multi-logic reasoning engine**. It started as a propositional satisfiability / entailment library and grew into a broad reasoning stack — propositional, SMT (integer arithmetic, arrays, theory combination), first-order, temporal (LTL + CTL), optimization, modal, fuzzy, probabilistic, finite-set, and finite-group — built on a shared SAT/SMT core:
 
 - A **formula language** with a text parser, pretty-printer, evaluator, simplifier, and truth tables.
 - Normal-form transformations — **NNF, CNF (classical + Tseitin), DNF**.
@@ -10,10 +10,10 @@ A .NET 10 **multi-logic reasoning engine**. It started as a propositional satisf
 - **Horn-clause** forward and backward chaining with proof trees.
 - **Cardinality constraints** — pairwise/binomial (model-counting safe) and a linear **sequential-counter** encoding.
 - **DIMACS** CNF read/write.
-- **SMT** via a generic lazy **DPLL(T)** framework with theories: **EUF** (equality + uninterpreted functions + predicates, proof-producing congruence closure), **LRA** (linear real arithmetic, exact-rational simplex), and **LIA** (linear integer arithmetic via branch-and-bound over a bounded domain, with model extraction).
-- **First-order logic** — a resolution refutation prover (quantifiers, unification, Skolemizing clausifier, equality via congruence axioms) with an honest semi-decidability verdict (`Proved` / `Saturated` / `Unknown`).
+- **SMT** via a generic lazy **DPLL(T)** framework with theories: **EUF** (equality + uninterpreted functions + predicates, proof-producing congruence closure), **LRA** (linear real arithmetic, exact-rational simplex), **LIA** (linear integer arithmetic via branch-and-bound over a bounded domain, with model extraction), and **arrays** (`select`/`store`, read-over-write reduction to EUF) — plus **EUF+LRA theory combination** (Nelson–Oppen) to solve formulas that mix uninterpreted functions and arithmetic.
+- **Temporal logic** — **LTL** bounded model checking and **CTL** explicit-state model checking (complete, over a finite Kripke structure).
+- **First-order logic** — a resolution refutation prover (quantifiers, unification, Skolemizing clausifier, **paramodulation** for built-in equality, θ-subsumption) with an honest semi-decidability verdict (`Proved` / `Saturated` / `Unknown`).
 - **MaxSAT** — core-guided weighted partial optimization (find the *best* model, not just any).
-- **Temporal logic** — **LTL** bounded model checking (satisfiability and counterexample traces over transition systems).
 - **Modal logic** — **K / T / B / S4 / S5** validity and satisfiability via bounded Kripke-model construction.
 - **Fuzzy logic** — many-valued **Gödel** and **Łukasiewicz** validity/satisfiability, reduced to linear real arithmetic over the existing LRA stack (exact, [0,1]-valued).
 - **Probabilistic SAT (PSAT)** — coherence checking and exact probability **bounds** for constraints over logical formulas, with no independence assumptions; solved as an exact linear program, and scalably via **column generation** (LP duals + MaxSAT pricing).
@@ -22,7 +22,7 @@ A .NET 10 **multi-logic reasoning engine**. It started as a propositional satisf
 
 Most capabilities follow one pattern — **encode into the SAT/SMT core, solve, decode** — so the heavy machinery (CDCL, DPLL(T), the exact simplex) is shared and the breadth is mostly thin, well-tested front-ends.
 
-Pure managed code; its one dependency, [DeepSigma.Mathematics](https://github.com/DeepSigma-LLC/Dotnet.DeepSigma.Mathematics) (exact-rational arithmetic, a simplex for LRA, an exact LP optimizer with duals for PSAT, finite-group `GroupTable` algebra, and discrete Bayesian-network inference), is also managed. Builds warnings-as-errors and ships with **428 tests** (plus the exact-arithmetic, LP-optimizer, group-algebra, and graphical-model tests in DeepSigma.Mathematics). Correctness is anchored by **differential testing** — each engine is checked against an independent brute-force oracle.
+Pure managed code; its one dependency, [DeepSigma.Mathematics](https://github.com/DeepSigma-LLC/Dotnet.DeepSigma.Mathematics) (exact-rational arithmetic, a simplex for LRA, an exact LP optimizer with duals for PSAT, finite-group `GroupTable` algebra, and discrete Bayesian-network inference), is also managed. Builds warnings-as-errors and ships with **467 tests** (plus the exact-arithmetic, LP-optimizer, group-algebra, and graphical-model tests in DeepSigma.Mathematics). Correctness is anchored by **differential testing** — each engine is checked against an independent brute-force oracle.
 
 ---
 
@@ -45,9 +45,12 @@ Pure managed code; its one dependency, [DeepSigma.Mathematics](https://github.co
 - [SMT-lite: equality + uninterpreted functions (EUF)](#smt-lite-equality--uninterpreted-functions-euf)
 - [SMT-lite: linear real arithmetic (LRA)](#smt-lite-linear-real-arithmetic-lra)
 - [SMT-lite: linear integer arithmetic (LIA)](#smt-lite-linear-integer-arithmetic-lia)
+- [SMT: theory of arrays](#smt-theory-of-arrays)
+- [SMT: combining theories (EUF + LRA)](#smt-combining-theories-euf--lra)
 - [First-order logic](#first-order-logic)
 - [MaxSAT: optimization](#maxsat-optimization)
 - [Temporal logic (LTL) and bounded model checking](#temporal-logic-ltl-and-bounded-model-checking)
+- [CTL model checking](#ctl-model-checking)
 - [Modal logic (K/T/B/S4/S5)](#modal-logic-ktbs4s5)
 - [Fuzzy logic (Gödel / Łukasiewicz)](#fuzzy-logic-gödel--łukasiewicz)
 - [Probabilistic SAT (PSAT)](#probabilistic-sat-psat)
@@ -104,9 +107,10 @@ src/DeepSigma.LogicEngine/        the library
   Reasoning/       Reasoner, WeightedModelCounter, ResolutionRefuter, Horn chaining
   Encoding/        Cardinality, SequentialCounter
   Transitions/     TransitionSystem, Unroller (BMC substrate)
-  Smt/             Term, SmtFormula, EUF + LRA + LIA theories, EufSolver, LraSolver, LiaSolver, parsers
+  Smt/             Term, SmtFormula, EUF/LRA/LIA/array + combined theories, EufSolver, LraSolver, LiaSolver, ArraySolver, CombinedSolver, parsers
   FirstOrder/      FolTerm/FolFormula, parser, unification, clausifier, FirstOrderProver
   Temporal/        LtlFormula, LtlParser, BoundedModelChecker
+  Ctl/             CtlFormula, CtlParser, KripkeStructure, CtlModelChecker
   Modal/           ModalFormula, ModalParser, ModalSolver (K/T/B/S4/S5)
   Fuzzy/           FuzzyFormula, FuzzySolver (Gödel / Łukasiewicz over LRA)
   Probabilistic/   ProbabilityConstraint, PsatSolver (coherence + bounds; column generation)
@@ -541,9 +545,43 @@ The relaxation pre-check still settles many unbounded cases definitely (an infea
 
 ---
 
+## SMT: theory of arrays
+
+`ArraySolver` decides the quantifier-free theory of arrays (non-extensional) over `select(a, i)` and `store(a, i, v)`, by **eager read-over-write instantiation**: for each `store` and each index term in the formula it adds the axioms `i = j → select(store(a,i,v), j) = v` and `i ≠ j → select(store(a,i,v), j) = select(a, j)`, then solves with `EufSolver`. For ground formulas this is complete.
+
+```csharp
+using DeepSigma.LogicEngine.Smt;
+
+ArraySolver.IsValid(SmtParser.Parse("select(store(a, i, v), i) = v"));                       // True
+ArraySolver.IsValid(SmtParser.Parse("i != j -> select(store(a, i, v), j) = select(a, j)"));  // True
+ArraySolver.IsSatisfiable(SmtParser.Parse("select(store(a, i, v), i) != v"));                // False
+```
+
+`select`/`store` are ordinary function symbols to the parser, so nested stores and arbitrary index/value terms work. (Extensionality — array equality from pointwise equality — is out of scope for v1.)
+
+---
+
+## SMT: combining theories (EUF + LRA)
+
+`CombinedSolver` solves formulas that **mix** uninterpreted functions and arithmetic in one solve, via a **Nelson–Oppen** combination of EUF and LRA over the DPLL(T) loop. Variables shared by name between the theories are the bridge: when one theory entails an equality between shared variables, it is propagated to the other, looping to a fixpoint. This decides formulas neither theory settles alone.
+
+```csharp
+using DeepSigma.LogicEngine.Smt;
+
+// x ≤ y ∧ y ≤ x forces x = y (LRA); congruence then gives f(x) = f(y), contradicting f(x) ≠ f(y).
+var mixed = new SmtAnd(LraParser.Parse("x <= y & y <= x"), SmtParser.Parse("f(x) != f(y)"));
+CombinedSolver.IsSatisfiable(mixed);   // False
+LraSolver.IsSatisfiable(LraParser.Parse("x <= y & y <= x"));   // True  — LRA part alone
+EufSolver.IsSatisfiable(SmtParser.Parse("f(x) != f(y)"));      // True  — EUF part alone
+```
+
+EUF and LRA are both stably infinite and convex over the reals, so equality propagation is complete. (LIA is bounded/finite-domain, so it is not folded into the combination.)
+
+---
+
 ## First-order logic
 
-A **resolution refutation** theorem prover over first-order logic: terms with real variables, function symbols, predicates, equality, and the quantifiers ∀/∃. A formula is clausified (NNF → standardize-apart → Skolemize → CNF), then a given-clause saturation loop applies binary resolution and factoring modulo **unification**; deriving the empty clause refutes the set. Equality is handled by adding congruence axioms. Validity and entailment are decided by refuting the negated goal.
+A **resolution refutation** theorem prover over first-order logic: terms with real variables, function symbols, predicates, equality, and the quantifiers ∀/∃. A formula is clausified (NNF → standardize-apart → Skolemize → CNF), then a given-clause saturation loop applies binary resolution, factoring, and **paramodulation** (built-in equality) modulo **unification**, pruning redundant clauses by **θ-subsumption**; deriving the empty clause refutes the set. Validity and entailment are decided by refuting the negated goal.
 
 ```csharp
 using DeepSigma.LogicEngine.FirstOrder;
@@ -554,7 +592,7 @@ FirstOrderProver.Entails(
     FolFormula.Parse("Mortal(socrates)"));                         // Proved
 
 FirstOrderProver.Entails(new[] { FolFormula.Parse("a = b"), FolFormula.Parse("b = c") },
-    FolFormula.Parse("a = c"));                                    // Proved (via equality axioms)
+    FolFormula.Parse("a = c"));                                    // Proved (via paramodulation)
 
 FirstOrderProver.IsValid(FolFormula.Parse("(exists x. P(x)) -> (forall x. P(x))")); // Saturated (not valid)
 ```
@@ -611,6 +649,26 @@ LtlTrace? cx = BoundedModelChecker.FindCounterexample(toggle, LtlParser.Parse("G
 ```
 
 A transition relation refers to the current state by name (`x`) and the next state by the primed name (`x'`). BMC is bounded: a witness found is real; "not found up to the bound" is not a proof of unsatisfiability.
+
+---
+
+## CTL model checking
+
+Where LTL/BMC is bounded, `CtlModelChecker` is a **complete, exact** explicit-state checker for Computation Tree Logic over a finite `KripkeStructure`. It labels each state with the subformulas it satisfies, using a least fixpoint for `EU`, a greatest fixpoint for `EG`, and a pre-image for `EX`; the universal/derived operators (`AX/AF/AG/EF/A[·U·]`) reduce to those.
+
+```csharp
+using DeepSigma.LogicEngine.Ctl;
+
+// 0 → 1 → 2 → 2 (self-loop); 'goal' holds only at state 2.
+var k = new KripkeStructure(3, new[] { (0, 1), (1, 2), (2, 2) },
+    new Dictionary<int, IEnumerable<string>> { [2] = new[] { "goal" } });
+
+CtlModelChecker.Holds(k, CtlFormula.Parse("EF goal"), 0);        // True  — goal is reachable
+CtlModelChecker.Holds(k, CtlFormula.Parse("AG (EF goal)"), 0);   // True  — goal is always still reachable
+CtlModelChecker.Holds(k, CtlFormula.Parse("AG goal"), 0);        // False — goal does not hold everywhere
+```
+
+Operators: `EX EG EF AX AF AG` (prefix) and `E[φ U ψ]` / `A[φ U ψ]`. `SatisfyingStates` returns the exact set of states satisfying a formula.
 
 ---
 
@@ -789,7 +847,7 @@ The other parsers share these connectives and add their own atoms/operators:
 
 ## Limitations
 
-- **Logics covered:** propositional, SMT (EUF, LRA, LIA), first-order logic, MaxSAT, LTL, modal K/T/B/S4/S5, fuzzy (Gödel/Łukasiewicz), probabilistic (PSAT), finite-set, and finite-group. No arrays/bit-vectors, no theory combination (an SMT solve uses one theory); no CTL/QBF/ASP. First-order proving is semi-decidable (budgeted `Unknown`); LIA is decided within a bounded integer box.
+- **Logics covered:** propositional, SMT (EUF, LRA, LIA, arrays, and EUF+LRA combination), first-order logic, MaxSAT, LTL, CTL, modal K/T/B/S4/S5, fuzzy (Gödel/Łukasiewicz), probabilistic (PSAT), finite-set, and finite-group. No bit-vectors; arrays are non-extensional; theory combination covers EUF+LRA (not LIA/arrays); no QBF/ASP. First-order proving is semi-decidable (budgeted `Unknown`); LIA is decided within a bounded integer box.
 - **Finite-set** cardinality reasoning and **finite-group** model finding are bounded/finite: set cardinality is decided relative to the universe size, and group search scales with an O(n⁶) associativity encoding (existence to ~order 10, isomorphism counting to ~order 8).
 - **Bounded methods** (LTL BMC, modal) are complete only up to their search bound.
 - EUF/LRA theory solvers are **rebuild-per-check** with no incremental push/pop or eager theory propagation — fine for teaching and modest problems, not tuned for large industrial instances.
@@ -807,7 +865,7 @@ dotnet test                                    # 398 tests
 dotnet run --project samples/DeepSigma.LogicEngine.Demo
 ```
 
-Correctness rests on **differential testing**: each engine is checked against an independent brute-force oracle — CDCL/DPLL vs the truth-table solver, MaxSAT vs brute-force optimum, weighted counting vs enumeration, the LTL encoder vs a lasso-trace simulator, the modal encoder vs a Kripke-model enumerator, fuzzy validity vs a [0,1]-grid evaluator, PSAT column generation vs exact possible-world enumeration, the finite-set encoder vs brute-force interpretation enumeration, the group finder vs brute-force Cayley-table enumeration, LIA vs integer-box enumeration, and the first-order prover vs a finite-model oracle (it must never refute a satisfiable set), plus DIMACS benchmarks with known verdicts and the EUF/LRA conflict-core tests against canonical facts.
+Correctness rests on **differential testing**: each engine is checked against an independent brute-force oracle — CDCL/DPLL vs the truth-table solver, MaxSAT vs brute-force optimum, weighted counting vs enumeration, the LTL encoder vs a lasso-trace simulator, the modal encoder vs a Kripke-model enumerator, fuzzy validity vs a [0,1]-grid evaluator, PSAT column generation vs exact possible-world enumeration, the finite-set encoder vs brute-force interpretation enumeration, the group finder vs brute-force Cayley-table enumeration, LIA vs integer-box enumeration, the first-order prover vs a finite-model oracle (it must never refute a satisfiable set), the combined EUF+LRA theory cross-checked against the single-theory solvers on pure formulas, the CTL fixpoint checker vs a DFS/path-based semantics oracle, and the array solver vs finite function-model enumeration, plus DIMACS benchmarks with known verdicts and the EUF/LRA conflict-core tests against canonical facts.
 
 ---
 
@@ -815,9 +873,9 @@ Correctness rests on **differential testing**: each engine is checked against an
 
 Documented future directions (some noted as hooks in the code):
 
-- **CTL** model checking; unbounded LIA via the Omega test (the current LIA is bounded).
-- **Theory combination** (Nelson–Oppen, e.g. EUF + LRA together); eager theory propagation; push/pop incremental theory state.
-- First-order refinements: paramodulation for built-in equality, set-of-support/ordered resolution, and a finite model finder.
+- Unbounded LIA via the Omega test (the current LIA is bounded); **extensional** arrays.
+- **Theory combination** beyond EUF+LRA (folding in LIA / arrays); eager theory propagation; push/pop incremental theory state.
+- First-order refinements: ordered/selection-based resolution and a finite model finder.
 - Scalable model counting via **d-DNNF** knowledge compilation.
 
 ---

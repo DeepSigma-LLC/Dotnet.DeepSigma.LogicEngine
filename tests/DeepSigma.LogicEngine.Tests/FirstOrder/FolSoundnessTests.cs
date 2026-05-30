@@ -16,7 +16,7 @@ public class FolSoundnessTests
         // Equality axioms are unnecessary here: a real-equality model is also a model
         // when '=' is read as an uninterpreted predicate, so the soundness check still
         // holds, and dropping them keeps the test fast.
-        var options = new FolOptions { MaxClauses = 300, IncludeEqualityAxioms = false };
+        var options = new FolOptions { MaxClauses = 300, UseParamodulation = false, IncludeEqualityAxioms = false };
         var checkedSatisfiable = 0;
 
         for (var trial = 0; trial < 60; trial++)

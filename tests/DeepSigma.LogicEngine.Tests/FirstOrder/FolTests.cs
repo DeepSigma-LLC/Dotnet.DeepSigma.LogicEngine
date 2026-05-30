@@ -101,6 +101,38 @@ public class FirstOrderProverTests
     }
 
     [Fact]
+    public void EqualitySubstitutionIntoPredicate_IsProved()
+    {
+        // a = b, P(a) ⊢ P(b) — paramodulation rewrites the predicate argument.
+        Assert.Equal(FolProofStatus.Proved, FirstOrderProver.Entails(
+            new[] { FolFormula.Parse("a = b"), FolFormula.Parse("P(a)") },
+            FolFormula.Parse("P(b)")));
+    }
+
+    [Fact]
+    public void NestedFunctionCongruence_IsProved()
+    {
+        // a = b ⊢ g(f(a), c) = g(f(b), c) — paramodulation into a deep subterm.
+        Assert.Equal(FolProofStatus.Proved, FirstOrderProver.Entails(
+            new[] { FolFormula.Parse("a = b") },
+            FolFormula.Parse("g(f(a), c) = g(f(b), c)")));
+    }
+
+    [Fact]
+    public void EqualityWithQuantifiedCongruence_IsProved()
+    {
+        // ∀x (P(x) -> Q(x)), a = b, P(a) ⊢ Q(b).
+        Assert.Equal(FolProofStatus.Proved, FirstOrderProver.Entails(
+            new[]
+            {
+                FolFormula.Parse("forall x. (P(x) -> Q(x))"),
+                FolFormula.Parse("a = b"),
+                FolFormula.Parse("P(a)"),
+            },
+            FolFormula.Parse("Q(b)")));
+    }
+
+    [Fact]
     public void ContradictoryKnowledgeBase_IsRefuted()
     {
         var status = FirstOrderProver.Refute(new[]

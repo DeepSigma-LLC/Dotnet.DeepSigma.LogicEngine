@@ -29,6 +29,9 @@ internal sealed class LiaTheory : ITheory
     }
 
     public IReadOnlySet<int>? Check(IReadOnlyList<(SmtFormula Atom, bool Value)> asserted)
+        => ConflictMinimizer.Minimize(asserted, RawCheck);
+
+    private IReadOnlySet<int>? RawCheck(IReadOnlyList<(SmtFormula Atom, bool Value)> asserted)
     {
         var constraints = new List<Constraint>(asserted.Count);
         for (var i = 0; i < asserted.Count; i++)

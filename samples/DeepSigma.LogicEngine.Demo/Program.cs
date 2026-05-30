@@ -1,4 +1,5 @@
 using DeepSigma.LogicEngine.Cnf;
+using DeepSigma.LogicEngine.Ctl;
 using DeepSigma.LogicEngine.Evaluation;
 using DeepSigma.LogicEngine.Formulas;
 using DeepSigma.LogicEngine.FiniteGroups;
@@ -297,6 +298,30 @@ Section("20. First-order logic (resolution prover)");
 
     var nonTheorem = FirstOrderProver.IsValid(FolFormula.Parse("(exists x. P(x)) -> (forall x. P(x))"));
     Console.WriteLine($"  '(∃x P) -> (∀x P)' valid? {nonTheorem}");
+}
+
+Section("21. Combined theories (EUF + LRA via Nelson–Oppen)");
+{
+    // x ≤ y ∧ y ≤ x forces x = y (arithmetic), so f(x) = f(y) (congruence) — contradicting f(x) ≠ f(y).
+    var mixed = new SmtAnd(LraParser.Parse("x <= y & y <= x"), SmtParser.Parse("f(x) != f(y)"));
+    Console.WriteLine($"  'x<=y & y<=x & f(x)!=f(y)' satisfiable (combined)? {CombinedSolver.IsSatisfiable(mixed)}");
+    Console.WriteLine($"    ...but the LRA part alone is SAT ({LraSolver.IsSatisfiable(LraParser.Parse("x <= y & y <= x"))}) and the EUF part alone is SAT ({EufSolver.IsSatisfiable(SmtParser.Parse("f(x) != f(y)"))})");
+}
+
+Section("22. CTL model checking");
+{
+    // 0 → 1 → 2 → 2 (self-loop); the proposition 'goal' holds only at state 2.
+    var kripke = new KripkeStructure(3, new[] { (0, 1), (1, 2), (2, 2) },
+        new Dictionary<int, IEnumerable<string>> { [2] = new[] { "goal" } });
+    Console.WriteLine($"  EF goal holds at state 0? {CtlModelChecker.Holds(kripke, CtlFormula.Parse("EF goal"), 0)}");
+    Console.WriteLine($"  AG (EF goal) holds at state 0? {CtlModelChecker.Holds(kripke, CtlFormula.Parse("AG (EF goal)"), 0)}");
+    Console.WriteLine($"  AG goal holds at state 0? {CtlModelChecker.Holds(kripke, CtlFormula.Parse("AG goal"), 0)}");
+}
+
+Section("23. Theory of arrays (select / store)");
+{
+    Console.WriteLine($"  'select(store(a,i,v),i) = v' valid? {ArraySolver.IsValid(SmtParser.Parse("select(store(a, i, v), i) = v"))}");
+    Console.WriteLine($"  'i != j -> select(store(a,i,v),j) = select(a,j)' valid? {ArraySolver.IsValid(SmtParser.Parse("i != j -> select(store(a, i, v), j) = select(a, j)"))}");
 }
 
 return;

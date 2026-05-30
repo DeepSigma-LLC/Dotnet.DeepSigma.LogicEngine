@@ -32,6 +32,10 @@ public static class LiaSolver
     public static bool Entails(IEnumerable<SmtFormula> knowledgeBase, SmtFormula query, IReadOnlyCollection<string> integerVariables, int bound = DefaultBound)
         => !IsSatisfiable(new SmtAnd(SmtFormula.All(knowledgeBase), new SmtNot(query)), integerVariables, bound);
 
+    /// <summary>The (minimized) conflict core of an inconsistent conjunction of LIA literals, or null if consistent.</summary>
+    public static IReadOnlyList<SmtFormula>? ConflictCore(IEnumerable<SmtFormula> literals, IReadOnlyCollection<string> integerVariables, int bound = DefaultBound)
+        => SmtDriver.ConflictCore(literals, new LiaTheory(integerVariables, bound));
+
     /// <summary>A satisfying integer assignment for the integer variables, or null if unsatisfiable.</summary>
     public static LiaModel? FindModel(SmtFormula formula, IReadOnlyCollection<string> integerVariables, int bound = DefaultBound)
     {
