@@ -1,0 +1,158 @@
+using DeepSigma.LogicEngine.Formulas;
+using DeepSigma.LogicEngine.Reasoning;
+
+namespace DeepSigma.LogicEngine.Modal;
+
+/// <summary>The modal system, determining the frame conditions on the accessibility relation.</summary>
+public enum ModalSystem
+{
+    /// <summary>K: no conditions (arbitrary frames).</summary>
+    K,
+
+    /// <summary>T: reflexive.</summary>
+    T,
+
+    /// <summary>B: reflexive + symmetric.</summary>
+    B,
+
+    /// <summary>S4: reflexive + transitive.</summary>
+    S4,
+
+    /// <summary>S5: reflexive + symmetric + transitive (equivalence).</summary>
+    S5,
+}
+
+/// <summary>
+/// Decision procedures for propositional modal logic via <b>SAT-based bounded
+/// Kripke-model construction</b>: the existence of a model with N worlds (whose
+/// accessibility relation satisfies the system's frame conditions) is encoded
+/// into a propositional formula and handed to the SAT back-end, increasing N.
+///
+/// <para>
+/// Search is bounded by <c>maxWorlds</c>: a formula reported satisfiable truly
+/// is; "not found up to maxWorlds" relies on the finite-model property holding
+/// within the bound (the default is ample for typical small formulas, but it is
+/// a bound, not a general proof of unsatisfiability).
+/// </para>
+/// </summary>
+public static class ModalSolver
+{
+    public const int DefaultMaxWorlds = 6;
+
+    /// <summary>True if the formula is satisfiable in some model of the system with up to <paramref name="maxWorlds"/> worlds.</summary>
+    public static bool IsSatisfiable(ModalFormula formula, ModalSystem system, int maxWorlds = DefaultMaxWorlds)
+    {
+        for (var n = 1; n <= maxWorlds; n++)
+        {
+            if (Reasoner.IsSatisfiable(EncodeAt(formula, system, n)))
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /// <summary>True if the formula is valid in the system (its negation has no model up to <paramref name="maxWorlds"/>).</summary>
+    public static bool IsValid(ModalFormula formula, ModalSystem system, int maxWorlds = DefaultMaxWorlds)
+        => !IsSatisfiable(new ModalNot(formula), system, maxWorlds);
+
+    /// <summary>Encode "∃ Kripke model on worlds 0..n−1 (frame-valid) with the formula true at world 0".</summary>
+    internal static Formula EncodeAt(ModalFormula formula, ModalSystem system, int n)
+    {
+        var subs = formula.Subformulas();
+        var index = new Dictionary<ModalFormula, int>();
+        for (var s = 0; s < subs.Count; s++)
+        {
+            index[subs[s]] = s;
+        }
+
+        Formula Holds(ModalFormula sub, int w) => Formula.Var($"h_{index[sub]}_{w}");
+        Formula Access(int u, int v) => Formula.Var($"R_{u}_{v}");
+
+        var parts = new List<Formula>();
+
+        // Defining constraints for every subformula at every world.
+        foreach (var sub in subs)
+        {
+            for (var w = 0; w < n; w++)
+            {
+                var here = Holds(sub, w);
+                switch (sub)
+                {
+                    case ModalAtom:
+                        break; // free valuation variable
+                    case ModalBool b:
+                        parts.Add(new Biconditional(here, Formula.Const(b.Value)));
+                        break;
+                    case ModalNot u:
+                        parts.Add(new Biconditional(here, new Negation(Holds(u.Operand, w))));
+                        break;
+                    case ModalAnd x:
+                        parts.Add(new Biconditional(here, new Conjunction(Holds(x.Left, w), Holds(x.Right, w))));
+                        break;
+                    case ModalOr x:
+                        parts.Add(new Biconditional(here, new Disjunction(Holds(x.Left, w), Holds(x.Right, w))));
+                        break;
+                    case ModalImplies x:
+                        parts.Add(new Biconditional(here, new Implication(Holds(x.Left, w), Holds(x.Right, w))));
+                        break;
+                    case ModalIff x:
+                        parts.Add(new Biconditional(here, new Biconditional(Holds(x.Left, w), Holds(x.Right, w))));
+                        break;
+                    case ModalBox x:
+                        parts.Add(new Biconditional(here, Formula.All(
+                            Enumerable.Range(0, n).Select(v => (Formula)new Implication(Access(w, v), Holds(x.Operand, v))))));
+                        break;
+                    case ModalDiamond x:
+                        parts.Add(new Biconditional(here, Formula.Any(
+                            Enumerable.Range(0, n).Select(v => (Formula)new Conjunction(Access(w, v), Holds(x.Operand, v))))));
+                        break;
+                }
+            }
+        }
+
+        AddFrameConstraints(parts, system, n, Access);
+
+        // The formula holds at the designated world 0.
+        parts.Add(Holds(formula, 0));
+        return Formula.All(parts);
+    }
+
+    private static void AddFrameConstraints(List<Formula> parts, ModalSystem system, int n, Func<int, int, Formula> access)
+    {
+        var reflexive = system is ModalSystem.T or ModalSystem.B or ModalSystem.S4 or ModalSystem.S5;
+        var symmetric = system is ModalSystem.B or ModalSystem.S5;
+        var transitive = system is ModalSystem.S4 or ModalSystem.S5;
+
+        if (reflexive)
+        {
+            for (var w = 0; w < n; w++)
+            {
+                parts.Add(access(w, w));
+            }
+        }
+        if (symmetric)
+        {
+            for (var u = 0; u < n; u++)
+            {
+                for (var v = 0; v < n; v++)
+                {
+                    parts.Add(new Implication(access(u, v), access(v, u)));
+                }
+            }
+        }
+        if (transitive)
+        {
+            for (var u = 0; u < n; u++)
+            {
+                for (var v = 0; v < n; v++)
+                {
+                    for (var x = 0; x < n; x++)
+                    {
+                        parts.Add(new Implication(new Conjunction(access(u, v), access(v, x)), access(u, x)));
+                    }
+                }
+            }
+        }
+    }
+}

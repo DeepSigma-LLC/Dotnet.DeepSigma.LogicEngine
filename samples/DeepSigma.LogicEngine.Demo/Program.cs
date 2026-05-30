@@ -3,7 +3,10 @@ using DeepSigma.LogicEngine.Evaluation;
 using DeepSigma.LogicEngine.Formulas;
 using DeepSigma.LogicEngine.Reasoning;
 using DeepSigma.LogicEngine.Smt;
+using DeepSigma.LogicEngine.Modal;
 using DeepSigma.LogicEngine.Solvers.MaxSat;
+using DeepSigma.LogicEngine.Temporal;
+using DeepSigma.LogicEngine.Transitions;
 
 Section("1. Parsing and pretty-printing");
 {
@@ -167,6 +170,35 @@ Section("12. MaxSAT: optimize over soft constraints");
     var result = new MaxSatSolver(hard, soft).Solve();
     Console.WriteLine($"  optimum cost: {result.Cost}");
     Console.WriteLine($"  a={result.Model["a"]}, b={result.Model["b"]}");
+}
+
+Section("13. Temporal (LTL): bounded model checking");
+{
+    var f = LtlFormula.Parse("G F a");   // a holds infinitely often
+    var sat = BoundedModelChecker.CheckSatisfiable(f, maxBound: 4);
+    Console.WriteLine($"  '{f}' satisfiable? {sat.Found} (lasso bound {sat.Bound}, loops at {sat.Trace?.LoopStart})");
+
+    // A toggle system; check whether 'x is never true' holds (it doesn't).
+    var toggle = new TransitionSystem(
+        new[] { "x" },
+        Initial: new DeepSigma.LogicEngine.Formulas.Negation(Formula.Var("x")),
+        Transition: new DeepSigma.LogicEngine.Formulas.Biconditional(
+            Formula.Var("x'"), new DeepSigma.LogicEngine.Formulas.Negation(Formula.Var("x"))));
+    var counterexample = BoundedModelChecker.FindCounterexample(toggle, LtlFormula.Parse("G !x"), maxBound: 4);
+    var trace = counterexample is null ? "none" :
+        string.Join(" -> ", counterexample.States.Select(s => s["x"] ? "x" : "!x"));
+    Console.WriteLine($"  toggle violates 'G !x'? {counterexample is not null}  trace: {trace}");
+}
+
+Section("14. Modal logic (K/T/S4/S5)");
+{
+    var t = ModalParser.Parse("[]p -> p");        // T axiom
+    Console.WriteLine($"  '{t}' valid in K?  {ModalSolver.IsValid(t, ModalSystem.K)}");
+    Console.WriteLine($"  '{t}' valid in T?  {ModalSolver.IsValid(t, ModalSystem.T)}");
+
+    var five = ModalParser.Parse("<>p -> []<>p"); // 5 axiom
+    Console.WriteLine($"  '{five}' valid in S4? {ModalSolver.IsValid(five, ModalSystem.S4)}");
+    Console.WriteLine($"  '{five}' valid in S5? {ModalSolver.IsValid(five, ModalSystem.S5)}");
 }
 
 return;
