@@ -32,7 +32,7 @@ internal static class FolPrinter
                 break;
             case FolFunc f:
                 sb.Append(f.Symbol).Append('(');
-                WriteArgs(f.Args, sb);
+                WriteArgs(f.Arguments, sb);
                 sb.Append(')');
                 break;
         }
@@ -57,7 +57,7 @@ internal static class FolPrinter
             case FolBool b: sb.Append(b.Value ? "true" : "false"); break;
             case FolPredicate p:
                 sb.Append(p.Symbol);
-                if (p.Args.Count > 0) { sb.Append('('); WriteArgs(p.Args, sb); sb.Append(')'); }
+                if (p.Arguments.Count > 0) { sb.Append('('); WriteArgs(p.Arguments, sb); sb.Append(')'); }
                 break;
             case FolEquals e: WriteTerm(e.Left, sb); sb.Append(" = "); WriteTerm(e.Right, sb); break;
             case FolNot n: sb.Append('!'); WriteOperand(n.Operand, sb); break;

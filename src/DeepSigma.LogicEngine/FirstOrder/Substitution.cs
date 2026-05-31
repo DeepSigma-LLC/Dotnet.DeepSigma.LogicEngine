@@ -15,10 +15,10 @@ public sealed class Substitution
         {
             case FolVar v:
                 return _bindings.TryGetValue(v.Name, out var bound) ? Apply(bound) : term;
-            case FolFunc f when f.Args.Count == 0:
+            case FolFunc f when f.Arguments.Count == 0:
                 return f;
             case FolFunc f:
-                return new FolFunc(f.Symbol, f.Args.Select(Apply).ToArray());
+                return new FolFunc(f.Symbol, f.Arguments.Select(Apply).ToArray());
             default:
                 return term;
         }
@@ -26,7 +26,7 @@ public sealed class Substitution
 
     public FolFormula Apply(FolFormula formula) => formula switch
     {
-        FolPredicate p => new FolPredicate(p.Symbol, p.Args.Select(Apply).ToArray()),
+        FolPredicate p => new FolPredicate(p.Symbol, p.Arguments.Select(Apply).ToArray()),
         FolEquals e => new FolEquals(Apply(e.Left), Apply(e.Right)),
         FolNot n => new FolNot(Apply(n.Operand)),
         FolAnd x => new FolAnd(Apply(x.Left), Apply(x.Right)),

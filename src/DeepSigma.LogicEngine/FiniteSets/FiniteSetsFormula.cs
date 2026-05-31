@@ -52,11 +52,20 @@ public sealed record ElementVar(string Name) : ElementExpr;
 /// <summary>Comparison operator for a cardinality constraint <c>|S| ⋈ k</c>.</summary>
 public enum CardOp
 {
-    Eq,
-    Le,
-    Lt,
-    Ge,
-    Gt,
+    /// <summary><c>|S| = k</c>.</summary>
+    Equal,
+
+    /// <summary><c>|S| &lt;= k</c>.</summary>
+    LessOrEqual,
+
+    /// <summary><c>|S| &lt; k</c>.</summary>
+    Less,
+
+    /// <summary><c>|S| &gt;= k</c>.</summary>
+    GreaterOrEqual,
+
+    /// <summary><c>|S| &gt; k</c>.</summary>
+    Greater,
 }
 
 /// <summary>
@@ -93,6 +102,10 @@ public sealed record MemberRel(ElementExpr Element, SetExpr Set) : SetFormula;
 public sealed record SubsetRel(SetExpr Left, SetExpr Right, bool Proper) : SetFormula;
 public sealed record EqualRel(SetExpr Left, SetExpr Right) : SetFormula;
 public sealed record DisjointRel(SetExpr Left, SetExpr Right) : SetFormula;
+/// <summary>A cardinality constraint <c>|Set| Op Bound</c> (e.g. <c>|A| &lt;= 3</c>).</summary>
+/// <param name="Set">The set whose cardinality is constrained.</param>
+/// <param name="Op">The comparison operator applied to the cardinality.</param>
+/// <param name="Bound">The integer the cardinality is compared against (its role depends on <paramref name="Op"/>).</param>
 public sealed record CardRel(SetExpr Set, CardOp Op, int Bound) : SetFormula;
 public sealed record SetNot(SetFormula Operand) : SetFormula;
 public sealed record SetAnd(SetFormula Left, SetFormula Right) : SetFormula;

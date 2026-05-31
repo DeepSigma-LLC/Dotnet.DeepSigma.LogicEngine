@@ -162,7 +162,7 @@ public static class FolParser
             }
             // No relation: the term must be a predicate application or a 0-ary predicate.
             return term is FolFunc f
-                ? new FolPredicate(f.Symbol, f.Args)
+                ? new FolPredicate(f.Symbol, f.Arguments)
                 : throw new FormatException($"Expected a predicate or relation, found a variable '{term}'.");
         }
 

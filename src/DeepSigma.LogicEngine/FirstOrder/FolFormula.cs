@@ -6,7 +6,7 @@ namespace DeepSigma.LogicEngine.FirstOrder;
 /// </summary>
 public abstract record FolFormula
 {
-    public static FolFormula Predicate(string symbol, params FolTerm[] args) => new FolPredicate(symbol, args);
+    public static FolFormula Predicate(string symbol, params FolTerm[] arguments) => new FolPredicate(symbol, arguments);
     public static FolFormula Equal(FolTerm left, FolTerm right) => new FolEquals(left, right);
     public static FolFormula Not(FolFormula f) => new FolNot(f);
     public static FolFormula And(FolFormula a, FolFormula b) => new FolAnd(a, b);
@@ -29,18 +29,18 @@ public abstract record FolFormula
 public sealed record FolPredicate : FolFormula
 {
     public string Symbol { get; }
-    public IReadOnlyList<FolTerm> Args { get; }
+    public IReadOnlyList<FolTerm> Arguments { get; }
 
-    public FolPredicate(string symbol, IReadOnlyList<FolTerm> args)
+    public FolPredicate(string symbol, IReadOnlyList<FolTerm> arguments)
     {
         Symbol = symbol;
-        Args = args;
+        Arguments = arguments;
     }
 
     public bool Equals(FolPredicate? other)
-        => other is not null && Symbol == other.Symbol && Common.StructuralEquality.ListEquals(Args, other.Args);
+        => other is not null && Symbol == other.Symbol && Common.StructuralEquality.ListEquals(Arguments, other.Arguments);
 
-    public override int GetHashCode() => Common.StructuralEquality.Hash(Symbol, Args);
+    public override int GetHashCode() => Common.StructuralEquality.Hash(Symbol, Arguments);
 }
 
 public sealed record FolEquals(FolTerm Left, FolTerm Right) : FolFormula;

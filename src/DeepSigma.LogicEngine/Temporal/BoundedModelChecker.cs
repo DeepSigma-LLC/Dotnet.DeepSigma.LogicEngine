@@ -27,6 +27,8 @@ public sealed record LtlBmcResult(bool Found, int Bound, LtlTrace? Trace);
 public static class BoundedModelChecker
 {
     /// <summary>Search for a lasso trace satisfying the LTL formula, for bounds 0..<paramref name="maxBound"/>.</summary>
+    /// <param name="formula">The LTL formula to satisfy.</param>
+    /// <param name="maxBound">Largest trace length k to try. A witness found is real; "not found" is bounded — not a proof of unsatisfiability.</param>
     public static LtlBmcResult CheckSatisfiable(LtlFormula formula, int maxBound = 10)
     {
         var nnf = formula.ToNnf();
@@ -49,6 +51,9 @@ public static class BoundedModelChecker
     /// for bounds 0..<paramref name="maxBound"/>. Returns the trace or null if
     /// none is found within the bound.
     /// </summary>
+    /// <param name="system">The transition system to check (current state by name, next state by the primed name).</param>
+    /// <param name="property">The LTL property expected to hold on every run; a returned trace violates it.</param>
+    /// <param name="maxBound">Largest trace length k searched. A counterexample found is real; "none found" is bounded, not a proof the property holds.</param>
     public static LtlTrace? FindCounterexample(TransitionSystem system, LtlFormula property, int maxBound = 10)
     {
         var negated = new LtlNot(property).ToNnf();

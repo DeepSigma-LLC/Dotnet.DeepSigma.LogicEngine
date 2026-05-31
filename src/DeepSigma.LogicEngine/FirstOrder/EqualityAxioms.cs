@@ -52,11 +52,11 @@ internal static class EqualityAxioms
         switch (atom)
         {
             case FolPredicate p:
-                if (p.Args.Count > 0)
+                if (p.Arguments.Count > 0)
                 {
-                    predicates[p.Symbol] = p.Args.Count;
+                    predicates[p.Symbol] = p.Arguments.Count;
                 }
-                foreach (var a in p.Args)
+                foreach (var a in p.Arguments)
                 {
                     CollectFromTerm(a, functions);
                 }
@@ -72,10 +72,10 @@ internal static class EqualityAxioms
     {
         if (term is FolFunc f)
         {
-            if (f.Args.Count > 0)
+            if (f.Arguments.Count > 0)
             {
-                functions[f.Symbol] = f.Args.Count;
-                foreach (var a in f.Args)
+                functions[f.Symbol] = f.Arguments.Count;
+                foreach (var a in f.Arguments)
                 {
                     CollectFromTerm(a, functions);
                 }

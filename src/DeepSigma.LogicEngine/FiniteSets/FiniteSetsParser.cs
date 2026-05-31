@@ -209,12 +209,12 @@ public static class FiniteSetsParser
             var bound = ParseInt();
             return op.Kind switch
             {
-                Kind.Le => SetFormula.Card(set, CardOp.Le, bound),
-                Kind.Lt => SetFormula.Card(set, CardOp.Lt, bound),
-                Kind.Ge => SetFormula.Card(set, CardOp.Ge, bound),
-                Kind.Gt => SetFormula.Card(set, CardOp.Gt, bound),
-                Kind.Eq => SetFormula.Card(set, CardOp.Eq, bound),
-                Kind.Neq => SetFormula.Not(SetFormula.Card(set, CardOp.Eq, bound)),
+                Kind.Le => SetFormula.Card(set, CardOp.LessOrEqual, bound),
+                Kind.Lt => SetFormula.Card(set, CardOp.Less, bound),
+                Kind.Ge => SetFormula.Card(set, CardOp.GreaterOrEqual, bound),
+                Kind.Gt => SetFormula.Card(set, CardOp.Greater, bound),
+                Kind.Eq => SetFormula.Card(set, CardOp.Equal, bound),
+                Kind.Neq => SetFormula.Not(SetFormula.Card(set, CardOp.Equal, bound)),
                 _ => throw new FormatException($"Expected a comparison after '|...|' but found '{op.Text}'."),
             };
         }

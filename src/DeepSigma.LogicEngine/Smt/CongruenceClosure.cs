@@ -232,18 +232,18 @@ internal sealed class CongruenceClosure
 
     private void MakeRoot(int x)
     {
-        var prev = -1;
-        var prevReason = default(Reason);
-        var cur = x;
-        while (cur != -1)
+        var previousNode = -1;
+        var previousReason = default(Reason);
+        var currentNode = x;
+        while (currentNode != -1)
         {
-            var nextNode = _proofParent[cur];
-            var nextReason = _proofReason[cur];
-            _proofParent[cur] = prev;
-            _proofReason[cur] = prevReason;
-            prev = cur;
-            prevReason = nextReason;
-            cur = nextNode;
+            var nextNode = _proofParent[currentNode];
+            var nextReason = _proofReason[currentNode];
+            _proofParent[currentNode] = previousNode;
+            _proofReason[currentNode] = previousReason;
+            previousNode = currentNode;
+            previousReason = nextReason;
+            currentNode = nextNode;
         }
     }
 
@@ -279,16 +279,16 @@ internal sealed class CongruenceClosure
         {
             ancestorsOfX.Add(n);
         }
-        var lca = y;
-        while (!ancestorsOfX.Contains(lca))
+        var lowestCommonAncestor = y;
+        while (!ancestorsOfX.Contains(lowestCommonAncestor))
         {
-            lca = _proofParent[lca];
+            lowestCommonAncestor = _proofParent[lowestCommonAncestor];
         }
-        for (var n = x; n != lca; n = _proofParent[n])
+        for (var n = x; n != lowestCommonAncestor; n = _proofParent[n])
         {
             ExpandReason(_proofReason[n], atoms, pending);
         }
-        for (var n = y; n != lca; n = _proofParent[n])
+        for (var n = y; n != lowestCommonAncestor; n = _proofParent[n])
         {
             ExpandReason(_proofReason[n], atoms, pending);
         }
@@ -301,17 +301,17 @@ internal sealed class CongruenceClosure
             atoms.Add(reason.AtomId);
             return;
         }
-        var argsA = _args[reason.App1];
-        var argsB = _args[reason.App2];
+        var argsA = _args[reason.LeftAppId];
+        var argsB = _args[reason.RightAppId];
         for (var i = 0; i < argsA.Length; i++)
         {
             pending.Enqueue((argsA[i], argsB[i]));
         }
     }
 
-    private readonly record struct Reason(bool IsInput, int AtomId, int App1, int App2)
+    private readonly record struct Reason(bool IsInput, int AtomId, int LeftAppId, int RightAppId)
     {
         public static Reason Input(int atomId) => new(true, atomId, -1, -1);
-        public static Reason Congruence(int app1, int app2) => new(false, -1, app1, app2);
+        public static Reason Congruence(int leftAppId, int rightAppId) => new(false, -1, leftAppId, rightAppId);
     }
 }

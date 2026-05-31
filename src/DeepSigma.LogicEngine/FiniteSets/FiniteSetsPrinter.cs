@@ -76,11 +76,11 @@ internal static class FiniteSetsPrinter
 
     private static string OpText(CardOp op) => op switch
     {
-        CardOp.Eq => "=",
-        CardOp.Le => "<=",
-        CardOp.Lt => "<",
-        CardOp.Ge => ">=",
-        CardOp.Gt => ">",
+        CardOp.Equal => "=",
+        CardOp.LessOrEqual => "<=",
+        CardOp.Less => "<",
+        CardOp.GreaterOrEqual => ">=",
+        CardOp.Greater => ">",
         _ => throw new InvalidOperationException(),
     };
 }

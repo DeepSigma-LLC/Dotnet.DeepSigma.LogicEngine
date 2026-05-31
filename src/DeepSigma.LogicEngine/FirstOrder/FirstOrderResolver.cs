@@ -83,20 +83,20 @@ internal sealed class FirstOrderResolver
             processed.Add(given);
 
             var derived = new List<FolClause>();
-            derived.AddRange(Factors(given));
+            derived.AddRange(ComputeFactors(given));
             if (_paramodulate)
             {
-                derived.AddRange(ReflexivityResolvents(given)); // close s ≠ t when s and t unify
+                derived.AddRange(ComputeReflexivityResolvents(given)); // close s ≠ t when s and t unify
             }
             foreach (var p in processed)
             {
-                derived.AddRange(Resolvents(given, p));
+                derived.AddRange(ComputeResolvents(given, p));
                 if (_paramodulate)
                 {
-                    derived.AddRange(Paramodulants(given, p));
+                    derived.AddRange(ComputeParamodulants(given, p));
                     if (!ReferenceEquals(p, given))
                     {
-                        derived.AddRange(Paramodulants(p, given));
+                        derived.AddRange(ComputeParamodulants(p, given));
                     }
                 }
             }
@@ -130,7 +130,7 @@ internal sealed class FirstOrderResolver
 
     // ---- inference rules ----
 
-    private IEnumerable<FolClause> Resolvents(FolClause c, FolClause d)
+    private IEnumerable<FolClause> ComputeResolvents(FolClause c, FolClause d)
     {
         var left = Rename(c);
         var right = Rename(d);
@@ -164,7 +164,7 @@ internal sealed class FirstOrderResolver
         return results;
     }
 
-    private IEnumerable<FolClause> Factors(FolClause c)
+    private IEnumerable<FolClause> ComputeFactors(FolClause c)
     {
         var clause = Rename(c);
         var results = new List<FolClause>();
@@ -187,7 +187,7 @@ internal sealed class FirstOrderResolver
     }
 
     /// <summary>Reflexivity resolution: drop a negated equality <c>s ≠ t</c> whose sides unify.</summary>
-    private IEnumerable<FolClause> ReflexivityResolvents(FolClause c)
+    private IEnumerable<FolClause> ComputeReflexivityResolvents(FolClause c)
     {
         var clause = Rename(c);
         var results = new List<FolClause>();
@@ -213,7 +213,7 @@ internal sealed class FirstOrderResolver
     }
 
     /// <summary>Paramodulate from an equation in <paramref name="from"/> into <paramref name="into"/>.</summary>
-    private IEnumerable<FolClause> Paramodulants(FolClause from, FolClause into)
+    private IEnumerable<FolClause> ComputeParamodulants(FolClause from, FolClause into)
     {
         var src = Rename(from);
         var tgt = Rename(into);
@@ -266,12 +266,12 @@ internal sealed class FirstOrderResolver
         switch (atom)
         {
             case FolPredicate p:
-                for (var i = 0; i < p.Args.Count; i++)
+                for (var i = 0; i < p.Arguments.Count; i++)
                 {
                     var index = i;
-                    foreach (var (sub, rebuild) in TermPositions(p.Args[i]))
+                    foreach (var (sub, rebuild) in TermPositions(p.Arguments[i]))
                     {
-                        yield return (sub, nt => new FolPredicate(p.Symbol, Replace(p.Args, index, rebuild(nt))));
+                        yield return (sub, nt => new FolPredicate(p.Symbol, Replace(p.Arguments, index, rebuild(nt))));
                     }
                 }
                 break;
@@ -293,12 +293,12 @@ internal sealed class FirstOrderResolver
         yield return (term, x => x);
         if (term is FolFunc f)
         {
-            for (var i = 0; i < f.Args.Count; i++)
+            for (var i = 0; i < f.Arguments.Count; i++)
             {
                 var index = i;
-                foreach (var (sub, rebuild) in TermPositions(f.Args[i]))
+                foreach (var (sub, rebuild) in TermPositions(f.Arguments[i]))
                 {
-                    yield return (sub, x => new FolFunc(f.Symbol, Replace(f.Args, index, rebuild(x))));
+                    yield return (sub, x => new FolFunc(f.Symbol, Replace(f.Arguments, index, rebuild(x))));
                 }
             }
         }
@@ -349,10 +349,10 @@ internal sealed class FirstOrderResolver
         switch (pattern, target)
         {
             case (FolPredicate pp, FolPredicate tp):
-                if (pp.Symbol != tp.Symbol || pp.Args.Count != tp.Args.Count) { return false; }
-                for (var i = 0; i < pp.Args.Count; i++)
+                if (pp.Symbol != tp.Symbol || pp.Arguments.Count != tp.Arguments.Count) { return false; }
+                for (var i = 0; i < pp.Arguments.Count; i++)
                 {
-                    if (!MatchTerm(pp.Args[i], tp.Args[i], bindings)) { return false; }
+                    if (!MatchTerm(pp.Arguments[i], tp.Arguments[i], bindings)) { return false; }
                 }
                 return true;
             case (FolEquals pe, FolEquals te):
@@ -375,10 +375,10 @@ internal sealed class FirstOrderResolver
                 bindings[v.Name] = target;
                 return true;
             case FolFunc pf when target is FolFunc tf:
-                if (pf.Symbol != tf.Symbol || pf.Args.Count != tf.Args.Count) { return false; }
-                for (var i = 0; i < pf.Args.Count; i++)
+                if (pf.Symbol != tf.Symbol || pf.Arguments.Count != tf.Arguments.Count) { return false; }
+                for (var i = 0; i < pf.Arguments.Count; i++)
                 {
-                    if (!MatchTerm(pf.Args[i], tf.Args[i], bindings)) { return false; }
+                    if (!MatchTerm(pf.Arguments[i], tf.Arguments[i], bindings)) { return false; }
                 }
                 return true;
             default:
@@ -424,7 +424,7 @@ internal sealed class FirstOrderResolver
     {
         switch (atom)
         {
-            case FolPredicate p: foreach (var a in p.Args) { CollectVars(a, names); } break;
+            case FolPredicate p: foreach (var a in p.Arguments) { CollectVars(a, names); } break;
             case FolEquals e: CollectVars(e.Left, names); CollectVars(e.Right, names); break;
         }
     }
@@ -434,7 +434,7 @@ internal sealed class FirstOrderResolver
         switch (term)
         {
             case FolVar v: names.Add(v.Name); break;
-            case FolFunc f: foreach (var a in f.Args) { CollectVars(a, names); } break;
+            case FolFunc f: foreach (var a in f.Arguments) { CollectVars(a, names); } break;
         }
     }
 
@@ -480,7 +480,7 @@ internal sealed class FirstOrderResolver
 
     private static string CanonicalAtom(FolFormula atom, Dictionary<string, string> canonical) => atom switch
     {
-        FolPredicate p => p.Symbol + "(" + string.Join(",", p.Args.Select(a => CanonicalTerm(a, canonical))) + ")",
+        FolPredicate p => p.Symbol + "(" + string.Join(",", p.Arguments.Select(a => CanonicalTerm(a, canonical))) + ")",
         FolEquals e => "=(" + CanonicalTerm(e.Left, canonical) + "," + CanonicalTerm(e.Right, canonical) + ")",
         _ => atom.ToString()!,
     };
@@ -496,10 +496,10 @@ internal sealed class FirstOrderResolver
                     canonical[v.Name] = name;
                 }
                 return name;
-            case FolFunc f when f.Args.Count == 0:
+            case FolFunc f when f.Arguments.Count == 0:
                 return f.Symbol;
             case FolFunc f:
-                return f.Symbol + "(" + string.Join(",", f.Args.Select(a => CanonicalTerm(a, canonical))) + ")";
+                return f.Symbol + "(" + string.Join(",", f.Arguments.Select(a => CanonicalTerm(a, canonical))) + ")";
             default:
                 return term.ToString()!;
         }

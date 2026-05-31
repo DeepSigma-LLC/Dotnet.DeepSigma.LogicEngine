@@ -74,40 +74,41 @@ public static class SequentialCounter
 
         var clauses = new List<Formula>();
 
-        Formula S(int i, int j)
+        Formula Counter(int i, int j)
         {
+            // The Sinz register variable s(i, j): "at least j of the first i inputs are true".
             var name = $"{prefix}_{i}_{j}";
             aux.Add(name);
             return new Variable(name);
         }
 
-        Formula X(int i) => inputs[i - 1]; // 1-based input access
+        Formula Input(int i) => inputs[i - 1]; // 1-based input access
 
         // x1 → s(1,1)
-        clauses.Add(new Disjunction(new Negation(X(1)), S(1, 1)));
+        clauses.Add(new Disjunction(new Negation(Input(1)), Counter(1, 1)));
         // ¬s(1,j) for j > 1
         for (var j = 2; j <= k; j++)
         {
-            clauses.Add(new Negation(S(1, j)));
+            clauses.Add(new Negation(Counter(1, j)));
         }
 
         for (var i = 2; i < n; i++)
         {
-            clauses.Add(new Disjunction(new Negation(X(i)), S(i, 1)));         // xi → s(i,1)
-            clauses.Add(new Disjunction(new Negation(S(i - 1, 1)), S(i, 1)));  // s(i-1,1) → s(i,1)
+            clauses.Add(new Disjunction(new Negation(Input(i)), Counter(i, 1)));         // xi → s(i,1)
+            clauses.Add(new Disjunction(new Negation(Counter(i - 1, 1)), Counter(i, 1)));  // s(i-1,1) → s(i,1)
             for (var j = 2; j <= k; j++)
             {
                 // (xi ∧ s(i-1,j-1)) → s(i,j)
-                clauses.Add(Formula.Any(new[] { new Negation(X(i)), new Negation(S(i - 1, j - 1)), (Formula)S(i, j) }));
+                clauses.Add(Formula.Any(new[] { new Negation(Input(i)), new Negation(Counter(i - 1, j - 1)), (Formula)Counter(i, j) }));
                 // s(i-1,j) → s(i,j)
-                clauses.Add(new Disjunction(new Negation(S(i - 1, j)), S(i, j)));
+                clauses.Add(new Disjunction(new Negation(Counter(i - 1, j)), Counter(i, j)));
             }
             // overflow: (xi ∧ s(i-1,k)) is forbidden
-            clauses.Add(new Disjunction(new Negation(X(i)), new Negation(S(i - 1, k))));
+            clauses.Add(new Disjunction(new Negation(Input(i)), new Negation(Counter(i - 1, k))));
         }
 
         // Final overflow guard for the last input.
-        clauses.Add(new Disjunction(new Negation(X(n)), new Negation(S(n - 1, k))));
+        clauses.Add(new Disjunction(new Negation(Input(n)), new Negation(Counter(n - 1, k))));
 
         return Formula.All(clauses);
     }

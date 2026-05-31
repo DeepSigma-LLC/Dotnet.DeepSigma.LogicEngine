@@ -9,7 +9,7 @@ public abstract record FolTerm
 {
     public static FolTerm Var(string name) => new FolVar(name);
     public static FolTerm Constant(string symbol) => new FolFunc(symbol, Array.Empty<FolTerm>());
-    public static FolTerm Func(string symbol, params FolTerm[] args) => new FolFunc(symbol, args);
+    public static FolTerm Func(string symbol, params FolTerm[] arguments) => new FolFunc(symbol, arguments);
 
     public sealed override string ToString() => FolPrinter.Print(this);
 }
@@ -19,18 +19,18 @@ public sealed record FolVar(string Name) : FolTerm;
 public sealed record FolFunc : FolTerm
 {
     public string Symbol { get; }
-    public IReadOnlyList<FolTerm> Args { get; }
+    public IReadOnlyList<FolTerm> Arguments { get; }
 
-    public FolFunc(string symbol, IReadOnlyList<FolTerm> args)
+    public FolFunc(string symbol, IReadOnlyList<FolTerm> arguments)
     {
         Symbol = symbol;
-        Args = args;
+        Arguments = arguments;
     }
 
-    public bool IsConstant => Args.Count == 0;
+    public bool IsConstant => Arguments.Count == 0;
 
     public bool Equals(FolFunc? other)
-        => other is not null && Symbol == other.Symbol && Common.StructuralEquality.ListEquals(Args, other.Args);
+        => other is not null && Symbol == other.Symbol && Common.StructuralEquality.ListEquals(Arguments, other.Arguments);
 
-    public override int GetHashCode() => Common.StructuralEquality.Hash(Symbol, Args);
+    public override int GetHashCode() => Common.StructuralEquality.Hash(Symbol, Arguments);
 }

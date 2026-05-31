@@ -214,11 +214,11 @@ public static class FiniteSetsSolver
             var slots = EncodeSet(c.Set);
             return c.Op switch
             {
-                CardOp.Eq => Cardinality.ExactlyK(slots, c.Bound),
-                CardOp.Le => Cardinality.AtMostK(slots, c.Bound),
-                CardOp.Lt => Cardinality.AtMostK(slots, c.Bound - 1),
-                CardOp.Ge => Cardinality.AtLeastK(slots, c.Bound),
-                CardOp.Gt => Cardinality.AtLeastK(slots, c.Bound + 1),
+                CardOp.Equal => Cardinality.ExactlyK(slots, c.Bound),
+                CardOp.LessOrEqual => Cardinality.AtMostK(slots, c.Bound),
+                CardOp.Less => Cardinality.AtMostK(slots, c.Bound - 1),
+                CardOp.GreaterOrEqual => Cardinality.AtLeastK(slots, c.Bound),
+                CardOp.Greater => Cardinality.AtLeastK(slots, c.Bound + 1),
                 _ => throw new InvalidOperationException(),
             };
         }

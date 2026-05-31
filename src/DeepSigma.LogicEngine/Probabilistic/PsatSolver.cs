@@ -7,6 +7,9 @@ using static DeepSigma.LogicEngine.Probabilistic.RationalVectors;
 namespace DeepSigma.LogicEngine.Probabilistic;
 
 /// <summary>A probabilistic constraint <c>P(Formula) ⋈ Probability</c>.</summary>
+/// <param name="Formula">The propositional formula whose probability is constrained.</param>
+/// <param name="Relation">The comparison <c>⋈</c> (=, ≤, or ≥) between <c>P(Formula)</c> and <paramref name="Probability"/>.</param>
+/// <param name="Probability">The right-hand-side probability in [0, 1].</param>
 public sealed record ProbabilityConstraint(Formula Formula, LinearRelation Relation, Rational Probability)
 {
     public static ProbabilityConstraint Exactly(Formula formula, Rational probability)

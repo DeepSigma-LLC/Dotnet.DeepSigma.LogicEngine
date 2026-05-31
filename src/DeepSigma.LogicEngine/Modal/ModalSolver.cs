@@ -40,6 +40,9 @@ public static class ModalSolver
     public const int DefaultMaxWorlds = 6;
 
     /// <summary>True if the formula is satisfiable in some model of the system with up to <paramref name="maxWorlds"/> worlds.</summary>
+    /// <param name="formula">The modal formula to test for satisfiability.</param>
+    /// <param name="system">The modal system whose frame conditions the constructed model must satisfy.</param>
+    /// <param name="maxWorlds">Largest Kripke model (in worlds) to try. A satisfiable result is sound; "not satisfiable up to maxWorlds" relies on the finite-model property within this bound, not a general proof of unsatisfiability.</param>
     public static bool IsSatisfiable(ModalFormula formula, ModalSystem system, int maxWorlds = DefaultMaxWorlds)
     {
         for (var n = 1; n <= maxWorlds; n++)
@@ -53,6 +56,9 @@ public static class ModalSolver
     }
 
     /// <summary>True if the formula is valid in the system (its negation has no model up to <paramref name="maxWorlds"/>).</summary>
+    /// <param name="formula">The modal formula to test for validity.</param>
+    /// <param name="system">The modal system whose frame conditions apply.</param>
+    /// <param name="maxWorlds">Largest Kripke model (in worlds) searched for a counter-model; validity is relative to this bound.</param>
     public static bool IsValid(ModalFormula formula, ModalSystem system, int maxWorlds = DefaultMaxWorlds)
         => !IsSatisfiable(new ModalNot(formula), system, maxWorlds);
 

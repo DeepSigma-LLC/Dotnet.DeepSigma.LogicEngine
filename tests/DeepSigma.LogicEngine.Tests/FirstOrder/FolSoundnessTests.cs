@@ -121,7 +121,7 @@ internal static class FolModelOracle
         {
             case FolBool b: return b.Value;
             case FolPredicate p:
-                var arg = EvalTerm(p.Args[0], m, env);
+                var arg = EvalTerm(p.Arguments[0], m, env);
                 return p.Symbol == "P" ? m.P[arg] : m.Q[arg];
             case FolEquals e: return EvalTerm(e.Left, m, env) == EvalTerm(e.Right, m, env);
             case FolNot n: return !Eval(n.Operand, m, env);
@@ -160,7 +160,7 @@ internal static class FolModelOracle
         FolVar v => env[v.Name],
         FolFunc f when f.Symbol == "a" => m.A,
         FolFunc f when f.Symbol == "b" => m.B,
-        FolFunc f when f.Symbol == "f" => m.F[EvalTerm(f.Args[0], m, env)],
+        FolFunc f when f.Symbol == "f" => m.F[EvalTerm(f.Arguments[0], m, env)],
         _ => throw new InvalidOperationException($"Unexpected symbol: {t}"),
     };
 }

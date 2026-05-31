@@ -89,7 +89,7 @@ internal sealed class Clausifier
         FolAnd x => new FolAnd(StandardizeApart(x.Left, renaming), StandardizeApart(x.Right, renaming)),
         FolOr x => new FolOr(StandardizeApart(x.Left, renaming), StandardizeApart(x.Right, renaming)),
         FolNot n => new FolNot(StandardizeApart(n.Operand, renaming)),
-        FolPredicate p => new FolPredicate(p.Symbol, p.Args.Select(a => RenameTerm(a, renaming)).ToArray()),
+        FolPredicate p => new FolPredicate(p.Symbol, p.Arguments.Select(a => RenameTerm(a, renaming)).ToArray()),
         FolEquals e => new FolEquals(RenameTerm(e.Left, renaming), RenameTerm(e.Right, renaming)),
         _ => f,
     };
@@ -105,7 +105,7 @@ internal sealed class Clausifier
     private static FolTerm RenameTerm(FolTerm t, Dictionary<string, FolTerm> renaming) => t switch
     {
         FolVar v => renaming.TryGetValue(v.Name, out var renamed) ? renamed : t,
-        FolFunc f => f.Args.Count == 0 ? f : new FolFunc(f.Symbol, f.Args.Select(a => RenameTerm(a, renaming)).ToArray()),
+        FolFunc f => f.Arguments.Count == 0 ? f : new FolFunc(f.Symbol, f.Arguments.Select(a => RenameTerm(a, renaming)).ToArray()),
         _ => t,
     };
 

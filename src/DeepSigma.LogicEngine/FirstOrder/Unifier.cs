@@ -22,13 +22,13 @@ public static class Unifier
         switch (a, b)
         {
             case (FolPredicate pa, FolPredicate pb):
-                if (pa.Symbol != pb.Symbol || pa.Args.Count != pb.Args.Count)
+                if (pa.Symbol != pb.Symbol || pa.Arguments.Count != pb.Arguments.Count)
                 {
                     return false;
                 }
-                for (var i = 0; i < pa.Args.Count; i++)
+                for (var i = 0; i < pa.Arguments.Count; i++)
                 {
-                    if (!UnifyInto(pa.Args[i], pb.Args[i], bindings))
+                    if (!UnifyInto(pa.Arguments[i], pb.Arguments[i], bindings))
                     {
                         return false;
                     }
@@ -82,13 +82,13 @@ public static class Unifier
 
         var fa = (FolFunc)a;
         var fb = (FolFunc)b;
-        if (fa.Symbol != fb.Symbol || fa.Args.Count != fb.Args.Count)
+        if (fa.Symbol != fb.Symbol || fa.Arguments.Count != fb.Arguments.Count)
         {
             return false;
         }
-        for (var i = 0; i < fa.Args.Count; i++)
+        for (var i = 0; i < fa.Arguments.Count; i++)
         {
-            if (!UnifyInto(fa.Args[i], fb.Args[i], bindings))
+            if (!UnifyInto(fa.Arguments[i], fb.Arguments[i], bindings))
             {
                 return false;
             }
@@ -111,7 +111,7 @@ public static class Unifier
         return t switch
         {
             FolVar v => v.Name == name,
-            FolFunc f => f.Args.Any(arg => Occurs(name, arg, bindings)),
+            FolFunc f => f.Arguments.Any(arg => Occurs(name, arg, bindings)),
             _ => false,
         };
     }

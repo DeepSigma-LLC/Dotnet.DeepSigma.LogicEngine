@@ -84,11 +84,11 @@ internal static class FiniteSetOracle
                 var count = EvalSet(c.Set, n, sets).Count(b => b);
                 return c.Op switch
                 {
-                    CardOp.Eq => count == c.Bound,
-                    CardOp.Le => count <= c.Bound,
-                    CardOp.Lt => count < c.Bound,
-                    CardOp.Ge => count >= c.Bound,
-                    CardOp.Gt => count > c.Bound,
+                    CardOp.Equal => count == c.Bound,
+                    CardOp.LessOrEqual => count <= c.Bound,
+                    CardOp.Less => count < c.Bound,
+                    CardOp.GreaterOrEqual => count >= c.Bound,
+                    CardOp.Greater => count > c.Bound,
                     _ => throw new InvalidOperationException(),
                 };
             case SetNot x: return !Eval(x.Operand, n, sets, elements);

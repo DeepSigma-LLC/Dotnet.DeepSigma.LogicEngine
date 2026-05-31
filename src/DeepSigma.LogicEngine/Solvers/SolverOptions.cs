@@ -48,6 +48,11 @@ public sealed record SolverOptions
     /// </summary>
     public int InitialLearnedClauseLimit { get; init; } = 2000;
 
+    /// <summary>
+    /// Geometric growth factor applied to the learned-clause limit after each
+    /// reduction (e.g. 1.1 raises the cap by 10% each time), so the database is
+    /// allowed to grow as the search deepens.
+    /// </summary>
     public double LearnedClauseGrowth { get; init; } = 1.1;
 
     public static SolverOptions Default { get; } = new();

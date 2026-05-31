@@ -21,7 +21,7 @@ internal sealed class ConflictAnalyzer
     private readonly bool _minimize;
     private bool[] _seen;
     private readonly List<int> _learned = new();
-    private readonly List<int> _touched = new(); // every variable we marked seen, for O(touched) cleanup
+    private readonly List<int> _seenToClear = new(); // variables marked in _seen this analysis, so cleanup is O(marked) not O(#vars)
 
     public ConflictAnalyzer(Trail trail, ClauseDatabase clauses, VsidsHeap vsids, bool minimize = false)
     {
@@ -236,16 +236,16 @@ internal sealed class ConflictAnalyzer
     private void Mark(int variable)
     {
         _seen[variable] = true;
-        _touched.Add(variable);
+        _seenToClear.Add(variable);
     }
 
     private void ClearMarks()
     {
-        foreach (var variable in _touched)
+        foreach (var variable in _seenToClear)
         {
             _seen[variable] = false;
         }
-        _touched.Clear();
+        _seenToClear.Clear();
     }
 
     /// <summary>

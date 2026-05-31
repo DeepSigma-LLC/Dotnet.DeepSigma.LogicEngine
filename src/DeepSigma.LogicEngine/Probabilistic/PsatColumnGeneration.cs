@@ -81,17 +81,17 @@ internal static class PsatColumnGeneration
         out List<IReadOnlyDictionary<string, bool>> worlds)
     {
         var formulas = constraints.Select(c => c.Formula).ToArray();
-        var rhs = constraints.Select(c => c.Probability).Append(Rational.One).ToArray();
-        var rowCount = constraints.Count + 1;
-        var normalizationRow = constraints.Count;
+        var targetProbabilities = constraints.Select(c => c.Probability).Append(Rational.One).ToArray();
+        var lpRowCount = constraints.Count + 1;
+        var normalizationRowIndex = constraints.Count;
 
         worlds = new List<IReadOnlyDictionary<string, bool>>();
         var seen = new HashSet<string>(StringComparer.Ordinal);
         AddWorld(worlds, seen, atoms, AllFalse(atoms)); // seed
 
-        foreach (var _ in Rounds(atoms.Count, rowCount))
+        foreach (var _ in Rounds(atoms.Count, lpRowCount))
         {
-            var result = SolveInfeasibilityMaster(worlds, formulas, rhs, rowCount, normalizationRow);
+            var result = SolveInfeasibilityMaster(worlds, formulas, targetProbabilities, lpRowCount, normalizationRowIndex);
             if (result.Objective == Rational.Zero)
             {
                 return true;
@@ -100,7 +100,7 @@ internal static class PsatColumnGeneration
             var weighted = ConstraintWeights(formulas, result.Duals);
             var priced = PriceWorld(weighted, atoms);
             // reduced cost > 0 ⇔ y·column > 0 ⇔ EvalWeighted + normalization-dual > 0
-            var value = EvalWeighted(priced, weighted) + result.Duals[normalizationRow];
+            var value = EvalWeighted(priced, weighted) + result.Duals[normalizationRowIndex];
             if (value <= Rational.Zero)
             {
                 return false; // no improving world: infeasibility is irreducible ⇒ incoherent
@@ -121,31 +121,31 @@ internal static class PsatColumnGeneration
     private static ExactLpResult SolveInfeasibilityMaster(
         IReadOnlyList<IReadOnlyDictionary<string, bool>> worlds,
         Formula[] formulas,
-        Rational[] rhs,
-        int rowCount,
-        int normalizationRow)
+        Rational[] targetProbabilities,
+        int lpRowCount,
+        int normalizationRowIndex)
     {
         var worldCount = worlds.Count;
-        var varCount = worldCount + 2 * rowCount; // [x_w...][a+_r, a-_r ...]
+        var varCount = worldCount + 2 * lpRowCount; // [x_w...][a+_r, a-_r ...]
         var lp = new ExactLinearProgram(varCount);
 
         var objective = Zeros(varCount);
-        for (var r = 0; r < rowCount; r++)
+        for (var r = 0; r < lpRowCount; r++)
         {
             objective[worldCount + 2 * r] = Rational.One;     // a+_r
             objective[worldCount + 2 * r + 1] = Rational.One; // a-_r
         }
 
-        for (var r = 0; r < rowCount; r++)
+        for (var r = 0; r < lpRowCount; r++)
         {
             var row = Zeros(varCount);
             for (var w = 0; w < worldCount; w++)
             {
-                row[w] = Membership(r, normalizationRow, formulas, worlds[w]);
+                row[w] = Membership(r, normalizationRowIndex, formulas, worlds[w]);
             }
             row[worldCount + 2 * r] = Rational.One;      // +a+_r
             row[worldCount + 2 * r + 1] = -Rational.One; // -a-_r
-            lp.AddConstraint(row, LinearRelation.Equal, rhs[r]);
+            lp.AddConstraint(row, LinearRelation.Equal, targetProbabilities[r]);
         }
 
         lp.SetObjective(LinearObjectiveSense.Minimize, objective);
@@ -162,15 +162,15 @@ internal static class PsatColumnGeneration
         bool maximize)
     {
         var formulas = constraints.Select(c => c.Formula).ToArray();
-        var rhs = constraints.Select(c => c.Probability).Append(Rational.One).ToArray();
-        var rowCount = constraints.Count + 1;
-        var normalizationRow = constraints.Count;
+        var targetProbabilities = constraints.Select(c => c.Probability).Append(Rational.One).ToArray();
+        var lpRowCount = constraints.Count + 1;
+        var normalizationRowIndex = constraints.Count;
         var seen = new HashSet<string>(worlds.Select(w => Key(atoms, w)), StringComparer.Ordinal);
 
         Rational objective = Rational.Zero;
-        foreach (var _ in Rounds(atoms.Count, rowCount))
+        foreach (var _ in Rounds(atoms.Count, lpRowCount))
         {
-            var result = SolveQueryMaster(worlds, formulas, rhs, rowCount, normalizationRow, query, maximize);
+            var result = SolveQueryMaster(worlds, formulas, targetProbabilities, lpRowCount, normalizationRowIndex, query, maximize);
             if (result.Status != ExactLpStatus.Optimal)
             {
                 return null; // should not happen (feasible & bounded); defensive
@@ -182,7 +182,7 @@ internal static class PsatColumnGeneration
             //   minimize:  y·A_j - c_j  with c_j = [w⊨Q]            (weights: +y_i·φ_i, -1·Q;   const +y_norm)
             var weighted = QueryWeights(formulas, query, result.Duals, maximize);
             var priced = PriceWorld(weighted, atoms);
-            var constant = maximize ? -result.Duals[normalizationRow] : result.Duals[normalizationRow];
+            var constant = maximize ? -result.Duals[normalizationRowIndex] : result.Duals[normalizationRowIndex];
             var value = EvalWeighted(priced, weighted) + constant;
             if (value <= Rational.Zero)
             {
@@ -201,23 +201,23 @@ internal static class PsatColumnGeneration
     private static ExactLpResult SolveQueryMaster(
         IReadOnlyList<IReadOnlyDictionary<string, bool>> worlds,
         Formula[] formulas,
-        Rational[] rhs,
-        int rowCount,
-        int normalizationRow,
+        Rational[] targetProbabilities,
+        int lpRowCount,
+        int normalizationRowIndex,
         Formula query,
         bool maximize)
     {
         var worldCount = worlds.Count;
         var lp = new ExactLinearProgram(worldCount);
 
-        for (var r = 0; r < rowCount; r++)
+        for (var r = 0; r < lpRowCount; r++)
         {
             var row = Zeros(worldCount);
             for (var w = 0; w < worldCount; w++)
             {
-                row[w] = Membership(r, normalizationRow, formulas, worlds[w]);
+                row[w] = Membership(r, normalizationRowIndex, formulas, worlds[w]);
             }
-            lp.AddConstraint(row, LinearRelation.Equal, rhs[r]);
+            lp.AddConstraint(row, LinearRelation.Equal, targetProbabilities[r]);
         }
 
         var objective = Zeros(worldCount);
@@ -319,9 +319,9 @@ internal static class PsatColumnGeneration
 
     // ---- Helpers ----
 
-    private static Rational Membership(int row, int normalizationRow, Formula[] formulas, IReadOnlyDictionary<string, bool> world)
+    private static Rational Membership(int row, int normalizationRowIndex, Formula[] formulas, IReadOnlyDictionary<string, bool> world)
     {
-        if (row == normalizationRow)
+        if (row == normalizationRowIndex)
         {
             return Rational.One; // every world contributes to the total mass
         }
@@ -329,9 +329,9 @@ internal static class PsatColumnGeneration
     }
 
     /// <summary>At most one fresh world is added per round; bounded by the total worlds.</summary>
-    private static IEnumerable<int> Rounds(int atomCount, int rowCount)
+    private static IEnumerable<int> Rounds(int atomCount, int lpRowCount)
     {
-        var max = (atomCount < 20 ? (1L << atomCount) : long.MaxValue) + rowCount + 2;
+        var max = (atomCount < 20 ? (1L << atomCount) : long.MaxValue) + lpRowCount + 2;
         for (long i = 0; i < max; i++)
         {
             yield return 0;

@@ -50,16 +50,16 @@ public static class ResolutionRefuter
     /// <summary>
     /// Holds the working state for a single refutation. All derived clauses are
     /// recorded as <see cref="ResolutionStep"/>s for proof reconstruction; the
-    /// <c>_active</c> flags track which clauses are still live after subsumption.
+    /// <c>_clauseActive</c> flags track which clauses are still live after subsumption.
     /// </summary>
     private sealed class Engine
     {
         private readonly int _maxClauses;
         private readonly List<ResolutionStep> _steps = new();
-        private readonly Dictionary<Clause, int> _index = new();
-        private readonly List<bool> _active = new();
-        private readonly List<int> _processed = new();
-        private readonly List<int> _support = new();
+        private readonly Dictionary<Clause, int> _stepIndexByClause = new();
+        private readonly List<bool> _clauseActive = new();
+        private readonly List<int> _processedSteps = new();
+        private readonly List<int> _supportSteps = new();
 
         public Engine(int maxClauses) => _maxClauses = maxClauses;
 
@@ -67,7 +67,7 @@ public static class ResolutionRefuter
         {
             foreach (var clause in usable)
             {
-                var added = AddClause(clause, null, null, null, _processed);
+                var added = AddClause(clause, null, null, null, _processedSteps);
                 if (added is { } step && step.Resolvent.IsEmpty)
                 {
                     return Refuted(step);
@@ -75,7 +75,7 @@ public static class ResolutionRefuter
             }
             foreach (var clause in support)
             {
-                var added = AddClause(clause, null, null, null, _support);
+                var added = AddClause(clause, null, null, null, _supportSteps);
                 if (added is { } step && step.Resolvent.IsEmpty)
                 {
                     return Refuted(step);
@@ -87,21 +87,21 @@ public static class ResolutionRefuter
 
         private ResolutionResult GivenClauseLoop()
         {
-            while (TryPickGiven(out var givenIndex))
+            while (TryPickGivenClause(out var givenIndex))
             {
-                _processed.Add(givenIndex);
+                _processedSteps.Add(givenIndex);
                 var given = _steps[givenIndex].Resolvent;
 
                 // Snapshot the processed set: resolving against clauses added
                 // later in this same iteration is unnecessary and avoids churn.
-                var partners = _processed.ToArray();
+                var partners = _processedSteps.ToArray();
                 foreach (var partnerIndex in partners)
                 {
-                    if (partnerIndex == givenIndex || !_active[partnerIndex])
+                    if (partnerIndex == givenIndex || !_clauseActive[partnerIndex])
                     {
                         continue;
                     }
-                    var result = ResolveAll(given, givenIndex, partnerIndex);
+                    var result = ResolveAgainstPartner(given, givenIndex, partnerIndex);
                     if (result is not null)
                     {
                         return result;
@@ -116,17 +116,17 @@ public static class ResolutionRefuter
         }
 
         /// <summary>Resolve the given clause against a partner on every shared pivot.</summary>
-        private ResolutionResult? ResolveAll(Clause given, int givenIndex, int partnerIndex)
+        private ResolutionResult? ResolveAgainstPartner(Clause given, int givenIndex, int partnerIndex)
         {
             var partner = _steps[partnerIndex].Resolvent;
             foreach (var pivot in PivotCandidates(given, partner))
             {
                 var resolvent = Resolve(given, partner, pivot);
-                if (resolvent.IsTautology() || _index.ContainsKey(resolvent) || IsSubsumed(resolvent))
+                if (resolvent.IsTautology() || _stepIndexByClause.ContainsKey(resolvent) || IsSubsumed(resolvent))
                 {
                     continue;
                 }
-                var step = AddClause(resolvent, givenIndex, partnerIndex, pivot, _support)!;
+                var step = AddClause(resolvent, givenIndex, partnerIndex, pivot, _supportSteps)!;
                 RetireClausesSubsumedBy(resolvent, step.Index);
                 if (resolvent.IsEmpty)
                 {
@@ -137,15 +137,15 @@ public static class ResolutionRefuter
         }
 
         /// <summary>Pick the shortest active support clause (a strong unit-first heuristic).</summary>
-        private bool TryPickGiven(out int givenIndex)
+        private bool TryPickGivenClause(out int givenIndex)
         {
             givenIndex = -1;
             var bestLength = int.MaxValue;
             var bestSlot = -1;
-            for (var slot = 0; slot < _support.Count; slot++)
+            for (var slot = 0; slot < _supportSteps.Count; slot++)
             {
-                var idx = _support[slot];
-                if (!_active[idx])
+                var idx = _supportSteps[slot];
+                if (!_clauseActive[idx])
                 {
                     continue;
                 }
@@ -161,20 +161,20 @@ public static class ResolutionRefuter
             {
                 return false;
             }
-            _support.RemoveAt(bestSlot);
+            _supportSteps.RemoveAt(bestSlot);
             return true;
         }
 
         private ResolutionStep? AddClause(Clause clause, int? left, int? right, string? pivot, List<int> bucket)
         {
-            if (clause.IsTautology() || _index.ContainsKey(clause))
+            if (clause.IsTautology() || _stepIndexByClause.ContainsKey(clause))
             {
                 return null;
             }
             var step = new ResolutionStep(_steps.Count, clause, left, right, pivot);
-            _index[clause] = step.Index;
+            _stepIndexByClause[clause] = step.Index;
             _steps.Add(step);
-            _active.Add(true);
+            _clauseActive.Add(true);
             bucket.Add(step.Index);
             return step;
         }
@@ -183,7 +183,7 @@ public static class ResolutionRefuter
         {
             for (var i = 0; i < _steps.Count; i++)
             {
-                if (_active[i] && Subsumes(_steps[i].Resolvent, candidate))
+                if (_clauseActive[i] && Subsumes(_steps[i].Resolvent, candidate))
                 {
                     return true;
                 }
@@ -195,9 +195,9 @@ public static class ResolutionRefuter
         {
             for (var i = 0; i < _steps.Count; i++)
             {
-                if (i != exceptIndex && _active[i] && Subsumes(clause, _steps[i].Resolvent))
+                if (i != exceptIndex && _clauseActive[i] && Subsumes(clause, _steps[i].Resolvent))
                 {
-                    _active[i] = false;
+                    _clauseActive[i] = false;
                 }
             }
         }
