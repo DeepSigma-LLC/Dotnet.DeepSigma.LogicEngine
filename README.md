@@ -188,7 +188,8 @@ MaxSAT. It is MIT-licensed.
 | SMT: EUF, LRA, arrays, combined | ✅ | ✅ (`Z3Smt`) | Z3 is faster at scale |
 | SMT: linear **integer** arithmetic (LIA) | ✅ bounded box | ✅ **unbounded** | Z3 is complete |
 | MaxSAT | ✅ (`MaxSatSolver`) | ✅ (`Z3MaxSat`) | |
-| Modal / LTL / finite-sets / finite-groups | ✅ | ⏳ planned (`ISatSolver` seam) | encoders reused; Z3 backs the SAT |
+| Modal / LTL / finite-sets / finite-groups | ✅ | ✅ (`ISatSolver` seam) | pass a `Z3SatSolver` to the facade; Z3 backs the SAT |
+| Fuzzy (Gödel / Łukasiewicz) | ✅ | ✅ (`FuzzyEncoder` → `Z3Smt`) | the reduction to LRA is public |
 | Bit-vectors / quantifiers / nonlinear / strings | ❌ | ⏳ planned (Z3-only) | new theories Z3 adds |
 | CTL model checking | ✅ | — | explicit-state; not an SMT query |
 | Model counting / weighted counting / PSAT | ✅ | — | Z3 is a solver, not a #SAT counter |
@@ -201,6 +202,10 @@ using DeepSigma.LogicEngine.Z3;
 // Complete, unbounded integers — the native LIA box would miss this.
 var r = Z3Smt.Solve(LraParser.Parse("x = 100000"), Z3SmtTheory.Lia, new[] { "x" });
 Console.WriteLine($"{r.Status}, x = {r.Model!["x"]}");   // Satisfiable, x = 100000
+
+// Encoder logics ride Z3 through the existing ISatSolver seam — just pass a Z3SatSolver.
+using DeepSigma.LogicEngine.Modal;
+bool valid = ModalSolver.IsValid(ModalParser.Parse("[]p -> p"), ModalSystem.T, new Z3SatSolver());
 ```
 
 ---

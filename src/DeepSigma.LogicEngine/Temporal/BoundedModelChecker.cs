@@ -1,6 +1,7 @@
 using DeepSigma.LogicEngine.Encoding;
 using DeepSigma.LogicEngine.Formulas;
 using DeepSigma.LogicEngine.Reasoning;
+using DeepSigma.LogicEngine.Solvers;
 using DeepSigma.LogicEngine.Transitions;
 
 namespace DeepSigma.LogicEngine.Temporal;
@@ -63,6 +64,46 @@ public static class BoundedModelChecker
         {
             var encoding = Encode(negated, k, system);
             var model = Reasoner.FindModel(encoding);
+            if (model is not null)
+            {
+                return ExtractTrace(model, atoms, k);
+            }
+        }
+        return null;
+    }
+
+    /// <summary>As <see cref="CheckSatisfiable(LtlFormula, int)"/>, but solving each bounded encoding with the supplied engine (e.g. a Z3-backed <see cref="ISatSolver"/>).</summary>
+    /// <param name="formula">The LTL formula to satisfy.</param>
+    /// <param name="solver">The SAT engine to solve each bounded lasso encoding with.</param>
+    /// <param name="maxBound">Largest trace length k to try; the bound semantics are unchanged.</param>
+    public static LtlBmcResult CheckSatisfiable(LtlFormula formula, ISatSolver solver, int maxBound = 10)
+    {
+        var nnf = formula.ToNnf();
+        var atoms = formula.Atoms();
+        for (var k = 0; k <= maxBound; k++)
+        {
+            var model = Reasoner.FindModel(Encode(nnf, k, transitionSystem: null), solver);
+            if (model is not null)
+            {
+                return new LtlBmcResult(true, k, ExtractTrace(model, atoms, k));
+            }
+        }
+        return new LtlBmcResult(false, maxBound, null);
+    }
+
+    /// <summary>As <see cref="FindCounterexample(TransitionSystem, LtlFormula, int)"/>, but solving with the supplied engine.</summary>
+    /// <param name="system">The transition system to check.</param>
+    /// <param name="property">The LTL property expected to hold; a returned trace violates it.</param>
+    /// <param name="solver">The SAT engine to solve each bounded encoding with.</param>
+    /// <param name="maxBound">Largest trace length k searched.</param>
+    public static LtlTrace? FindCounterexample(TransitionSystem system, LtlFormula property, ISatSolver solver, int maxBound = 10)
+    {
+        var negated = new LtlNot(property).ToNnf();
+        var atoms = new HashSet<string>(system.StateVariables, StringComparer.Ordinal);
+        atoms.UnionWith(property.Atoms());
+        for (var k = 0; k <= maxBound; k++)
+        {
+            var model = Reasoner.FindModel(Encode(negated, k, system), solver);
             if (model is not null)
             {
                 return ExtractTrace(model, atoms, k);

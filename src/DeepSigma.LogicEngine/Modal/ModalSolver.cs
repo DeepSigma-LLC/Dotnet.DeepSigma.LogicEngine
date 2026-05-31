@@ -1,5 +1,6 @@
 using DeepSigma.LogicEngine.Formulas;
 using DeepSigma.LogicEngine.Reasoning;
+using DeepSigma.LogicEngine.Solvers;
 
 namespace DeepSigma.LogicEngine.Modal;
 
@@ -61,6 +62,31 @@ public static class ModalSolver
     /// <param name="maxWorlds">Largest Kripke model (in worlds) searched for a counter-model; validity is relative to this bound.</param>
     public static bool IsValid(ModalFormula formula, ModalSystem system, int maxWorlds = DefaultMaxWorlds)
         => !IsSatisfiable(new ModalNot(formula), system, maxWorlds);
+
+    /// <summary>As <see cref="IsSatisfiable(ModalFormula, ModalSystem, int)"/>, but solving the bounded SAT encoding with the supplied engine (e.g. a Z3-backed <see cref="ISatSolver"/>).</summary>
+    /// <param name="formula">The modal formula to test for satisfiability.</param>
+    /// <param name="system">The modal system whose frame conditions the constructed model must satisfy.</param>
+    /// <param name="solver">The SAT engine to solve each bounded encoding with.</param>
+    /// <param name="maxWorlds">Largest Kripke model (in worlds) to try; the bound semantics are unchanged.</param>
+    public static bool IsSatisfiable(ModalFormula formula, ModalSystem system, ISatSolver solver, int maxWorlds = DefaultMaxWorlds)
+    {
+        for (var n = 1; n <= maxWorlds; n++)
+        {
+            if (Reasoner.IsSatisfiable(EncodeAt(formula, system, n), solver))
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /// <summary>As <see cref="IsValid(ModalFormula, ModalSystem, int)"/>, but solving with the supplied engine.</summary>
+    /// <param name="formula">The modal formula to test for validity.</param>
+    /// <param name="system">The modal system whose frame conditions apply.</param>
+    /// <param name="solver">The SAT engine to solve each bounded encoding with.</param>
+    /// <param name="maxWorlds">Largest Kripke model (in worlds) searched for a counter-model.</param>
+    public static bool IsValid(ModalFormula formula, ModalSystem system, ISatSolver solver, int maxWorlds = DefaultMaxWorlds)
+        => !IsSatisfiable(new ModalNot(formula), system, solver, maxWorlds);
 
     /// <summary>Encode "∃ Kripke model on worlds 0..n−1 (frame-valid) with the formula true at world 0".</summary>
     internal static Formula EncodeAt(ModalFormula formula, ModalSystem system, int n)

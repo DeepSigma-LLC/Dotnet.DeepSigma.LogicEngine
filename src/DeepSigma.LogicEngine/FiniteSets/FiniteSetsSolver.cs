@@ -1,6 +1,7 @@
 using DeepSigma.LogicEngine.Encoding;
 using DeepSigma.LogicEngine.Formulas;
 using DeepSigma.LogicEngine.Reasoning;
+using DeepSigma.LogicEngine.Solvers;
 
 namespace DeepSigma.LogicEngine.FiniteSets;
 
@@ -46,6 +47,34 @@ public static class FiniteSetsSolver
     {
         var encoder = new Encoder(ResolveUniverse(formula, universe));
         var model = Reasoner.FindModel(encoder.Encode(formula));
+        return model is null ? null : encoder.Decode(model);
+    }
+
+    /// <summary>As <see cref="IsSatisfiable(SetFormula, int?)"/>, but solving the SAT encoding with the supplied engine (e.g. a Z3-backed <see cref="ISatSolver"/>).</summary>
+    /// <param name="formula">The set formula to test.</param>
+    /// <param name="solver">The SAT engine to solve the membership-bit encoding with.</param>
+    /// <param name="universe">The bounded universe size; null auto-sizes it as documented above.</param>
+    public static bool IsSatisfiable(SetFormula formula, ISatSolver solver, int? universe = null)
+    {
+        var encoder = new Encoder(ResolveUniverse(formula, universe));
+        return Reasoner.IsSatisfiable(encoder.Encode(formula), solver);
+    }
+
+    /// <summary>As <see cref="IsValid(SetFormula, int?)"/>, but solving with the supplied engine.</summary>
+    /// <param name="formula">The set formula to test for validity.</param>
+    /// <param name="solver">The SAT engine to solve with.</param>
+    /// <param name="universe">The bounded universe size; null auto-sizes it.</param>
+    public static bool IsValid(SetFormula formula, ISatSolver solver, int? universe = null)
+        => !IsSatisfiable(SetFormula.Not(formula), solver, universe);
+
+    /// <summary>As <see cref="FindModel(SetFormula, int?)"/>, but solving with the supplied engine.</summary>
+    /// <param name="formula">The set formula to solve.</param>
+    /// <param name="solver">The SAT engine to solve with.</param>
+    /// <param name="universe">The bounded universe size; null auto-sizes it.</param>
+    public static FiniteSetModel? FindModel(SetFormula formula, ISatSolver solver, int? universe = null)
+    {
+        var encoder = new Encoder(ResolveUniverse(formula, universe));
+        var model = Reasoner.FindModel(encoder.Encode(formula), solver);
         return model is null ? null : encoder.Decode(model);
     }
 

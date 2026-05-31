@@ -1,4 +1,5 @@
 using DeepSigma.LogicEngine.Reasoning;
+using DeepSigma.LogicEngine.Solvers;
 using DeepSigma.Mathematics.Algebra;
 
 namespace DeepSigma.LogicEngine.FiniteGroups;
@@ -41,6 +42,42 @@ public static class GroupFinder
             return table;
         }
         // The first model failed an order-based requirement; search the rest.
+        foreach (var candidate in EnumerateGroups(order, spec))
+        {
+            return candidate;
+        }
+        return null;
+    }
+
+    /// <summary>As <see cref="ExistsGroup(int, GroupSpec?)"/>, but solving the SAT encoding with the supplied engine (e.g. a Z3-backed <see cref="ISatSolver"/>).</summary>
+    /// <param name="order">The group order to search at.</param>
+    /// <param name="solver">The SAT engine to solve the group-axiom encoding with.</param>
+    /// <param name="spec">Optional structural requirements.</param>
+    public static bool ExistsGroup(int order, ISatSolver solver, GroupSpec? spec = null)
+    {
+        if (spec?.HasPostFilter == true)
+        {
+            return FindGroup(order, solver, spec) is not null;
+        }
+        return Reasoner.IsSatisfiable(GroupSatEncoder.Encode(order, spec), solver);
+    }
+
+    /// <summary>As <see cref="FindGroup(int, GroupSpec?)"/>, but solving with the supplied engine. (An order-based post-filter miss falls back to native enumeration.)</summary>
+    /// <param name="order">The group order to search at.</param>
+    /// <param name="solver">The SAT engine to solve with.</param>
+    /// <param name="spec">Optional structural requirements.</param>
+    public static GroupTable? FindGroup(int order, ISatSolver solver, GroupSpec? spec = null)
+    {
+        var model = Reasoner.FindModel(GroupSatEncoder.Encode(order, spec), solver);
+        if (model is null)
+        {
+            return null;
+        }
+        var table = GroupModelDecoder.Decode(model, order);
+        if (spec is null || PostFilterMatches(table, spec))
+        {
+            return table;
+        }
         foreach (var candidate in EnumerateGroups(order, spec))
         {
             return candidate;
