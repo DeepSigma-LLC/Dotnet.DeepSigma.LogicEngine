@@ -25,6 +25,7 @@ public abstract record ModalFormula
     public static ModalFormula operator |(ModalFormula a, ModalFormula b) => new ModalOr(a, b);
 
     public static ModalFormula Parse(string source) => ModalParser.Parse(source);
+    public static bool TryParse(string source, out ModalFormula formula) => ModalParser.TryParse(source, out formula);
 
     /// <summary>The atomic proposition names occurring in this formula.</summary>
     public IReadOnlySet<string> Atoms()

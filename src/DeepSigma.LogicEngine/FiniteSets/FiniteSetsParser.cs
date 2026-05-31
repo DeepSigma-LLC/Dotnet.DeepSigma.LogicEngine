@@ -79,30 +79,30 @@ public static class FiniteSetsParser
                     else { tokens.Add(new(Kind.Not, "!")); i++; }
                     continue;
                 case '<':
-                    if (Match(s, i, "<->")) { tokens.Add(new(Kind.Iff, "<->")); i += 3; }
-                    else if (Match(s, i, "<=")) { tokens.Add(new(Kind.Le, "<=")); i += 2; }
+                    if (CharScanner.Matches(s, i, "<->")) { tokens.Add(new(Kind.Iff, "<->")); i += 3; }
+                    else if (CharScanner.Matches(s, i, "<=")) { tokens.Add(new(Kind.Le, "<=")); i += 2; }
                     else { tokens.Add(new(Kind.Lt, "<")); i++; }
                     continue;
                 case '>':
-                    if (Match(s, i, ">=")) { tokens.Add(new(Kind.Ge, ">=")); i += 2; }
+                    if (CharScanner.Matches(s, i, ">=")) { tokens.Add(new(Kind.Ge, ">=")); i += 2; }
                     else { tokens.Add(new(Kind.Gt, ">")); i++; }
                     continue;
                 case '-':
-                    if (Match(s, i, "->")) { tokens.Add(new(Kind.Implies, "->")); i += 2; continue; }
+                    if (CharScanner.Matches(s, i, "->")) { tokens.Add(new(Kind.Implies, "->")); i += 2; continue; }
                     throw new FormatException("Unexpected '-' (did you mean '->'?).");
             }
 
             if (char.IsDigit(c))
             {
                 var start = i;
-                while (i < s.Length && char.IsDigit(s[i])) { i++; }
+                i = CharScanner.ReadWhile(s, i, char.IsDigit);
                 tokens.Add(new(Kind.Int, s[start..i]));
                 continue;
             }
-            if (char.IsLetter(c) || c == '_')
+            if (CharScanner.IsIdentifierStart(c))
             {
                 var start = i;
-                while (i < s.Length && (char.IsLetterOrDigit(s[i]) || s[i] == '_')) { i++; }
+                i = CharScanner.ReadWhile(s, i, CharScanner.IsIdentifierPart);
                 var text = s[start..i];
                 tokens.Add(new(Keyword(text), text));
                 continue;
@@ -112,9 +112,6 @@ public static class FiniteSetsParser
         tokens.Add(new(Kind.End, string.Empty));
         return tokens;
     }
-
-    private static bool Match(string s, int i, string token)
-        => i + token.Length <= s.Length && s.AsSpan(i, token.Length).SequenceEqual(token);
 
     private static Kind Keyword(string text) => text switch
     {

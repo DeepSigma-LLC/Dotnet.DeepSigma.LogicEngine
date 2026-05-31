@@ -125,9 +125,7 @@ public static class Reasoner
             var model = CnfPreparer.Project(result.Model, projected);
             yield return model;
 
-            var blocking = projected
-                .Select(name => model[name] ? Literal.Negative(name) : Literal.Positive(name))
-                .ToList();
+            var blocking = BlockingClause(model, projected);
             if (!solver.AddClause(blocking))
             {
                 yield break;
@@ -167,9 +165,7 @@ public static class Reasoner
             yield return model;
 
             // Block the discovered model on the original variables.
-            var blocking = originalVars.Select(name =>
-                model[name] ? Literal.Negative(name) : Literal.Positive(name)).ToList();
-            clauses.Add(new Clause(blocking));
+            clauses.Add(new Clause(BlockingClause(model, originalVars)));
         }
     }
 
@@ -178,6 +174,14 @@ public static class Reasoner
 
     public static long CountModels(Formula formula, ISatSolver solver)
         => EnumerateModels(formula, solver).LongCount();
+
+    /// <summary>
+    /// The clause that rules out <paramref name="model"/> on the given
+    /// <paramref name="variables"/>: the disjunction of each variable's complement
+    /// literal, so any later model must differ on at least one of them.
+    /// </summary>
+    private static List<Literal> BlockingClause(Model model, IReadOnlySet<string> variables)
+        => variables.Select(name => model[name] ? Literal.Negative(name) : Literal.Positive(name)).ToList();
 
     private static SatResult SolveFormula(ISatSolver solver, Formula formula)
     {

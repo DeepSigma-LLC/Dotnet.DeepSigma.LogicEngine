@@ -125,9 +125,7 @@ internal sealed class CombinedTheory : ITheory
         var constraints = new List<(IReadOnlyList<(string, Rational)>, LinearRelation, Rational)>();
         foreach (var (atom, value) in lra)
         {
-            var relation = value ? atom.Relation : atom.Relation.Negate();
-            var terms = atom.Terms.Select(t => (t.Variable, t.Coefficient)).ToArray();
-            constraints.Add((terms, relation, atom.Constant));
+            constraints.Add((TheoryAtoms.LinearTerms(atom), TheoryAtoms.Polarized(atom, value), atom.Constant));
         }
         foreach (var (x, y) in equalities)
         {
@@ -172,7 +170,7 @@ internal sealed class CombinedTheory : ITheory
         var closure = new CongruenceClosure();
         for (var i = 0; i < euf.Count; i++)
         {
-            closure.Assert(ToLiteral(euf[i].Atom, euf[i].Value, i));
+            closure.Assert(TheoryAtoms.ToEufLiteral(euf[i].Atom, euf[i].Value, i));
         }
         var tag = euf.Count;
         foreach (var (x, y) in equalities)
@@ -181,14 +179,6 @@ internal sealed class CombinedTheory : ITheory
         }
         return closure;
     }
-
-    private static EufLiteral ToLiteral(SmtFormula atom, bool positive, int atomId) => atom switch
-    {
-        EqualityAtom e => new EufLiteral(atomId, positive, EufAtomKind.Equality, e.Left, e.Right),
-        PredicateAtom p => new EufLiteral(atomId, positive, EufAtomKind.Predicate,
-            new Term(p.Symbol, p.Arguments), new Term(p.Symbol, p.Arguments)),
-        _ => throw new ArgumentException($"Not an EUF theory atom: {atom}"),
-    };
 
     private static (string, string) Order(string a, string b)
         => string.CompareOrdinal(a, b) <= 0 ? (a, b) : (b, a);

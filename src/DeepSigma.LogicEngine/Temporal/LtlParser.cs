@@ -28,7 +28,6 @@ public static class LtlParser
     {
         var tokens = new List<Token>();
         var i = 0;
-        char Next() => i + 1 < s.Length ? s[i + 1] : '\0';
         while (i < s.Length)
         {
             var c = s[i];
@@ -38,15 +37,15 @@ public static class LtlParser
                 case '(': tokens.Add(new(Kind.LParen, "(", i++)); continue;
                 case ')': tokens.Add(new(Kind.RParen, ")", i++)); continue;
                 case '!': case '~': tokens.Add(new(Kind.Not, "!", i++)); continue;
-                case '&': tokens.Add(new(Kind.And, "&", i)); i += Next() == '&' ? 2 : 1; continue;
-                case '|': tokens.Add(new(Kind.Or, "|", i)); i += Next() == '|' ? 2 : 1; continue;
+                case '&': tokens.Add(new(Kind.And, "&", i)); i += CharScanner.Peek(s, i) == '&' ? 2 : 1; continue;
+                case '|': tokens.Add(new(Kind.Or, "|", i)); i += CharScanner.Peek(s, i) == '|' ? 2 : 1; continue;
             }
             if (c == '<' && i + 2 < s.Length && (s[i + 1] is '-' or '=') && s[i + 2] == '>') { tokens.Add(new(Kind.Iff, "<->", i)); i += 3; continue; }
-            if ((c == '-' || c == '=') && Next() == '>') { tokens.Add(new(Kind.Implies, "->", i)); i += 2; continue; }
-            if (char.IsLetter(c) || c == '_')
+            if ((c == '-' || c == '=') && CharScanner.Peek(s, i) == '>') { tokens.Add(new(Kind.Implies, "->", i)); i += 2; continue; }
+            if (CharScanner.IsIdentifierStart(c))
             {
                 var start = i;
-                while (i < s.Length && (char.IsLetterOrDigit(s[i]) || s[i] == '_')) i++;
+                i = CharScanner.ReadWhile(s, i, CharScanner.IsIdentifierPart);
                 var text = s[start..i];
                 tokens.Add(new(KeywordKind(text), text, start));
                 continue;

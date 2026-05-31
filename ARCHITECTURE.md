@@ -138,6 +138,14 @@ enum, and all atom/term grammar.
   never enters it, so per-logic quirks (FiniteSets `|A|` vs boolean-or and its
   backtracking; LRA `(`-disambiguation and linear grammar; FOL quantifier scope; CTL
   bracket forms `E[φ U ψ]`) stay local and untouched.
+- **`CharScanner`** — stateless character-level helpers for the hand-written tokenizers
+  (`Peek(s, i, offset)`, `Matches(s, i, literal)`, `IsIdentifierStart`/`IsIdentifierPart`,
+  and `ReadWhile(s, start, cont)`). `TokenReader`/`ConnectiveChain` operate *after*
+  tokenization; `CharScanner` removes the duplicated lookahead, identifier/number scanning,
+  and literal matching from the `Tokenize(string)` methods. Each lexer keeps its own
+  `i++ / continue` loop, its `Token`/`Kind` type, its keyword map, and its multi-character
+  operator dispatch (which has per-parser ordering, e.g. LRA matches `<=` before `<->`), so
+  accepted syntax and error positions are unchanged.
 
 Two parser styles coexist: `Peek()`-method parsers (`Parser`, `Modal`, `Smt`, `Ltl`,
 `Lra`) derive from `TokenReader`; `Peek`-property parsers (`Fol`, `Ctl`) keep their own
@@ -173,6 +181,15 @@ Two `internal` helpers; each printer keeps its own per-node dispatch and its own
   `(symbol, args)`-shaped AST nodes. Used by `Term`, `PredicateAtom`, `FolFunc`,
   `FolPredicate` instead of hand-rolled loops.
 
+In the SMT layer, **`Smt/TheoryAtoms`** holds the shared conversions from abstracted
+`SmtFormula` atoms to the representations the theory solvers consume: `ToEufLiteral` (used
+by `EufTheory` and the EUF half of `CombinedTheory`) and `LinearTerms`/`Polarized` (used by
+`LraTheory`, `LiaTheory`, and the LRA half of `CombinedTheory`). Each theory keeps its own
+"wrong kind of atom" guard text and its own solver-specific add call. Relatedly, all four
+theories now report **1-minimal conflict cores**: `LiaTheory`/`CombinedTheory` already wrapped
+their raw check in `Smt/ConflictMinimizer`, and `EufTheory`/`LraTheory` now do the same, so
+the DPLL(T) loop learns equally strong blocking clauses across theories.
+
 ---
 
 ## Facade conventions — and why they diverge
@@ -197,6 +214,19 @@ The same honesty appears in the caveats baked into names and docs: BMC/modal/fin
 are bounded; FOL is semi-decidable; arrays are non-extensional; theory combination is
 EUF+LRA only. Keep those caveats visible — they are features, not omissions.
 
+**Discovery aids (additive, not unifying).** Two consumer-facing conveniences smooth the
+above without collapsing the principled divergence:
+- Every formula type exposes both `Parse` and `TryParse` (the `TryParse` delegates to the
+  parser's `try { Parse } catch (FormatException)`), so `XxxFormula.Parse`/`TryParse` is a
+  uniform construction entry. LRA still parses via `LraParser.Parse` because it and EUF
+  produce the *same* `SmtFormula` from different surface syntaxes.
+- `Smt/SmtSolver.cs` is a single front door for the quantifier-free SMT theories: an
+  `SmtTheory` enum (`Euf`/`Lra`/`Combined`/`Arrays`) selects which dedicated facade
+  `SmtSolver.{IsSatisfiable,IsValid,Entails,Solve}(f, theory)` dispatches to. It adds no new
+  semantics (the `Arrays` case reuses `ArraySolver.WithArrayAxioms` → EUF). The dedicated
+  facades stay public for richer outputs (`ConflictCore`); LIA stays on `LiaSolver` because
+  its integer-variable set and search bound don't fit the uniform signature.
+
 ---
 
 ## How to add a new logic
@@ -210,7 +240,8 @@ Say you want to add logic *Foo*. The mechanical steps:
    `Common.BalancedFold` for any `All`/`Any` helpers and `Common.StructuralEquality` for
    `(symbol, args)` nodes.
 3. **Parser** — `FooParser.cs`: a static `Parse(string)`/`TryParse`. Write a small
-   tokenizer producing your own `Token`/`Kind`. For the boolean connectives, derive an
+   tokenizer producing your own `Token`/`Kind`, using `CharScanner` for the lookahead,
+   identifier/number scanning, and literal matching. For the boolean connectives, derive an
    inner `State` from `TokenReader<Token, Kind>` and build the connective levels with
    `ConnectiveChain.LeftAssoc`/`RightAssoc`. Put *Foo*-specific grammar in the operand
    hook you pass in.

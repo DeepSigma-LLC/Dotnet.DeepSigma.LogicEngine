@@ -32,6 +32,7 @@ public abstract record CtlFormula
     public static CtlFormula operator |(CtlFormula a, CtlFormula b) => new CtlOr(a, b);
 
     public static CtlFormula Parse(string source) => CtlParser.Parse(source);
+    public static bool TryParse(string source, out CtlFormula formula) => CtlParser.TryParse(source, out formula);
 
     public sealed override string ToString() => CtlPrinter.Print(this);
 }

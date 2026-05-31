@@ -79,14 +79,14 @@ public static class LraParser
             if (char.IsDigit(c))
             {
                 var start = i;
-                while (i < s.Length && char.IsDigit(s[i])) i++;
+                i = CharScanner.ReadWhile(s, i, char.IsDigit);
                 tokens.Add(new(TokenKind.Number, s[start..i], start));
                 continue;
             }
-            if (char.IsLetter(c) || c == '_')
+            if (CharScanner.IsIdentifierStart(c))
             {
                 var start = i;
-                while (i < s.Length && (char.IsLetterOrDigit(s[i]) || s[i] == '_')) i++;
+                i = CharScanner.ReadWhile(s, i, CharScanner.IsIdentifierPart);
                 var text = s[start..i];
                 var kind = text switch
                 {

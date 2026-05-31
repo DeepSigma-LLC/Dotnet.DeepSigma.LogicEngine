@@ -31,6 +31,7 @@ Pure managed code; its one dependency, [DeepSigma.Mathematics](https://github.co
 - [Install / getting started](#install--getting-started)
 - [Project layout](#project-layout)
 - [Quick tour](#quick-tour)
+- [Choosing an entry point](#choosing-an-entry-point)
 - [Building formulas](#building-formulas)
 - [Solving: SAT, validity, entailment](#solving-sat-validity-entailment)
 - [Models, enumeration, counting](#models-enumeration-counting)
@@ -166,6 +167,49 @@ Model? m = Reasoner.FindModel(f);                                // e.g. { p=F, 
 // Model counting
 Reasoner.CountModels(Formula.Parse("p | q"));                    // 3
 ```
+
+---
+
+## Choosing an entry point
+
+Every logic follows the same shape: **construct** a formula (parse text, use the `&` `|` `!`
+operators, or call factory helpers), then hand it to that logic's **entry point**. Each
+formula type exposes both `Parse` and `TryParse`.
+
+| Logic | Construct | Decide / solve with |
+|-------|-----------|---------------------|
+| Propositional | `Formula.Parse` · `Formula.Var/All/Any` · `& \| !` | `Reasoner.IsValid` / `IsSatisfiable` / `Entails` / `FindModel` / `CountModels` |
+| SMT (EUF, LRA, arrays, EUF+LRA) | `SmtFormula.Parse` (equality/UF) · `LraParser.Parse` (arithmetic) · factories | `SmtSolver.IsValid` / `IsSatisfiable` / `Entails` / `Solve` `(f, SmtTheory.X)` |
+| SMT — linear **integer** arithmetic (LIA) | `LraParser.Parse` | `LiaSolver.*(f, integerVariables, bound)` (+ `FindModel`) |
+| First-order | `FolFormula.Parse` · factories | `FirstOrderProver.IsValid` / `Entails` → `FolProofStatus` |
+| LTL | `LtlFormula.Parse` · factories | `BoundedModelChecker.CheckSatisfiable` / `FindCounterexample` |
+| CTL | `CtlFormula.Parse` · factories | `CtlModelChecker.Holds` / `SatisfyingStates` |
+| Modal | `ModalFormula.Parse` · factories | `ModalSolver.IsValid` / `IsSatisfiable` `(f, ModalSystem.X)` |
+| Fuzzy | factories · `& \| !` (no text parser) | `FuzzySolver.IsValid` / `IsSatisfiable` `(f, FuzzyLogic.X)` |
+| Probabilistic (PSAT) | `ProbabilityConstraint.Exactly/AtMost/AtLeast` over `Formula` | `PsatSolver.IsConsistent` / `Bounds` |
+| Finite sets | `SetFormula.Parse` · factories | `FiniteSetsSolver.IsValid` / `IsSatisfiable` / `FindModel` |
+| Finite groups | `GroupSpec` | `GroupFinder.FindGroup` / `CountGroupsUpToIsomorphism` / … |
+
+**Which SMT theory?** `SmtSolver` is the single front door; pick the theory by the atoms in
+your formula:
+
+| Your formula contains… | Use |
+|------------------------|-----|
+| equalities + uninterpreted functions/predicates (`f(a) = b`, `P(x)`) | `SmtTheory.Euf` |
+| linear arithmetic over the reals (`2*x + y <= 3`) | `SmtTheory.Lra` |
+| `select` / `store` | `SmtTheory.Arrays` |
+| a mix of uninterpreted functions **and** linear arithmetic | `SmtTheory.Combined` |
+| linear arithmetic over the **integers** | `LiaSolver` directly (needs the integer-variable set + a search bound) |
+
+```csharp
+using DeepSigma.LogicEngine.Smt;
+
+SmtSolver.IsValid(SmtFormula.Parse("a = b & b = c -> f(a) = f(c)"), SmtTheory.Euf);   // True
+SmtSolver.IsSatisfiable(LraParser.Parse("x >= 1 & y >= 1 & x + y <= 1"), SmtTheory.Lra); // False
+```
+
+The dedicated facades (`EufSolver`, `LraSolver`, `CombinedSolver`, `ArraySolver`) remain
+available for richer outputs — e.g. `EufSolver.ConflictCore(...)`.
 
 ---
 

@@ -40,9 +40,7 @@ internal sealed class LiaTheory : ITheory
             {
                 throw new ArgumentException($"Not an arithmetic theory atom: {asserted[i].Atom}");
             }
-            var relation = asserted[i].Value ? atom.Relation : atom.Relation.Negate();
-            var terms = atom.Terms.Select(t => (t.Variable, t.Coefficient)).ToArray();
-            constraints.Add(new Constraint(i, terms, relation, atom.Constant));
+            constraints.Add(new Constraint(i, TheoryAtoms.LinearTerms(atom), TheoryAtoms.Polarized(atom, asserted[i].Value), atom.Constant));
         }
 
         // Pre-check the rational relaxation (no box): an infeasible relaxation is a

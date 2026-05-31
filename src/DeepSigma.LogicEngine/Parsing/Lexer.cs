@@ -1,3 +1,5 @@
+using static DeepSigma.LogicEngine.Parsing.Infrastructure.CharScanner;
+
 namespace DeepSigma.LogicEngine.Parsing;
 
 internal enum TokenKind
@@ -51,61 +53,58 @@ internal static class Lexer
             }
             if (ch == '&')
             {
-                var len = i + 1 < source.Length && source[i + 1] == '&' ? 2 : 1;
+                var len = Peek(source, i) == '&' ? 2 : 1;
                 tokens.Add(new Token(TokenKind.And, source.Substring(i, len), i));
                 i += len;
                 continue;
             }
             if (ch == '|')
             {
-                var len = i + 1 < source.Length && source[i + 1] == '|' ? 2 : 1;
+                var len = Peek(source, i) == '|' ? 2 : 1;
                 tokens.Add(new Token(TokenKind.Or, source.Substring(i, len), i));
                 i += len;
                 continue;
             }
-            if (ch == '/' && i + 1 < source.Length && source[i + 1] == '\\')
+            if (Matches(source, i, "/\\"))
             {
                 tokens.Add(new Token(TokenKind.And, "/\\", i));
                 i += 2;
                 continue;
             }
-            if (ch == '\\' && i + 1 < source.Length && source[i + 1] == '/')
+            if (Matches(source, i, "\\/"))
             {
                 tokens.Add(new Token(TokenKind.Or, "\\/", i));
                 i += 2;
                 continue;
             }
-            if (ch == '<' && i + 2 < source.Length && source[i + 1] == '-' && source[i + 2] == '>')
+            if (ch == '<' && i + 2 < source.Length && Peek(source, i) == '-' && Peek(source, i, 2) == '>')
             {
                 tokens.Add(new Token(TokenKind.Iff, "<->", i));
                 i += 3;
                 continue;
             }
-            if (ch == '<' && i + 2 < source.Length && source[i + 1] == '=' && source[i + 2] == '>')
+            if (ch == '<' && i + 2 < source.Length && Peek(source, i) == '=' && Peek(source, i, 2) == '>')
             {
                 tokens.Add(new Token(TokenKind.Iff, "<=>", i));
                 i += 3;
                 continue;
             }
-            if (ch == '-' && i + 1 < source.Length && source[i + 1] == '>')
+            if (ch == '-' && Peek(source, i) == '>')
             {
                 tokens.Add(new Token(TokenKind.Implies, "->", i));
                 i += 2;
                 continue;
             }
-            if (ch == '=' && i + 1 < source.Length && source[i + 1] == '>')
+            if (ch == '=' && Peek(source, i) == '>')
             {
                 tokens.Add(new Token(TokenKind.Implies, "=>", i));
                 i += 2;
                 continue;
             }
-            if (IsIdentStart(ch))
+            if (IsIdentifierStart(ch))
             {
                 var start = i;
-                while (i < source.Length && IsIdentCont(source[i]))
-                {
-                    i++;
-                }
+                i = ReadWhile(source, i, IsIdentifierPart);
                 var text = source.Substring(start, i - start);
                 var kind = text switch
                 {
@@ -124,7 +123,4 @@ internal static class Lexer
         tokens.Add(new Token(TokenKind.End, string.Empty, source.Length));
         return tokens;
     }
-
-    private static bool IsIdentStart(char ch) => char.IsLetter(ch) || ch == '_';
-    private static bool IsIdentCont(char ch) => char.IsLetterOrDigit(ch) || ch == '_';
 }

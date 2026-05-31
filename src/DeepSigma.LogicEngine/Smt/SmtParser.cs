@@ -78,7 +78,7 @@ public static class SmtParser
             }
             if (ch == '!')
             {
-                if (Next(source, i) == '=')
+                if (CharScanner.Peek(source, i) == '=')
                 {
                     tokens.Add(new SmtToken(SmtTokenKind.NotEq, "!=", i));
                     i += 2;
@@ -91,7 +91,7 @@ public static class SmtParser
             }
             if (ch == '=')
             {
-                if (Next(source, i) == '>')
+                if (CharScanner.Peek(source, i) == '>')
                 {
                     tokens.Add(new SmtToken(SmtTokenKind.Implies, "=>", i));
                     i += 2;
@@ -104,25 +104,25 @@ public static class SmtParser
             }
             if (ch == '&')
             {
-                var len = Next(source, i) == '&' ? 2 : 1;
+                var len = CharScanner.Peek(source, i) == '&' ? 2 : 1;
                 tokens.Add(new SmtToken(SmtTokenKind.And, source.Substring(i, len), i));
                 i += len;
                 continue;
             }
             if (ch == '|')
             {
-                var len = Next(source, i) == '|' ? 2 : 1;
+                var len = CharScanner.Peek(source, i) == '|' ? 2 : 1;
                 tokens.Add(new SmtToken(SmtTokenKind.Or, source.Substring(i, len), i));
                 i += len;
                 continue;
             }
-            if (ch == '/' && Next(source, i) == '\\')
+            if (ch == '/' && CharScanner.Peek(source, i) == '\\')
             {
                 tokens.Add(new SmtToken(SmtTokenKind.And, "/\\", i));
                 i += 2;
                 continue;
             }
-            if (ch == '\\' && Next(source, i) == '/')
+            if (ch == '\\' && CharScanner.Peek(source, i) == '/')
             {
                 tokens.Add(new SmtToken(SmtTokenKind.Or, "\\/", i));
                 i += 2;
@@ -134,19 +134,16 @@ public static class SmtParser
                 i += 3;
                 continue;
             }
-            if (ch == '-' && Next(source, i) == '>')
+            if (ch == '-' && CharScanner.Peek(source, i) == '>')
             {
                 tokens.Add(new SmtToken(SmtTokenKind.Implies, "->", i));
                 i += 2;
                 continue;
             }
-            if (char.IsLetter(ch) || ch == '_')
+            if (CharScanner.IsIdentifierStart(ch))
             {
                 var start = i;
-                while (i < source.Length && (char.IsLetterOrDigit(source[i]) || source[i] == '_'))
-                {
-                    i++;
-                }
+                i = CharScanner.ReadWhile(source, i, CharScanner.IsIdentifierPart);
                 var text = source.Substring(start, i - start);
                 tokens.Add(new SmtToken(KeywordKind(text), text, start));
                 continue;
@@ -156,8 +153,6 @@ public static class SmtParser
         tokens.Add(new SmtToken(SmtTokenKind.End, string.Empty, source.Length));
         return tokens;
     }
-
-    private static char Next(string source, int i) => i + 1 < source.Length ? source[i + 1] : '\0';
 
     private static SmtTokenKind KeywordKind(string text) => text switch
     {

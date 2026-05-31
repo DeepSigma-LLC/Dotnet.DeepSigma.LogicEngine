@@ -29,6 +29,7 @@ public abstract record LtlFormula
     public static LtlFormula operator |(LtlFormula a, LtlFormula b) => new LtlOr(a, b);
 
     public static LtlFormula Parse(string source) => LtlParser.Parse(source);
+    public static bool TryParse(string source, out LtlFormula formula) => LtlParser.TryParse(source, out formula);
 
     /// <summary>The set of atomic proposition names occurring in this formula.</summary>
     public IReadOnlySet<string> Atoms()

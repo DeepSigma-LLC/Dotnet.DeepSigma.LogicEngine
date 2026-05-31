@@ -84,6 +84,7 @@ public abstract record SetFormula
     public static SetFormula operator |(SetFormula a, SetFormula b) => new SetOr(a, b);
 
     public static SetFormula Parse(string source) => FiniteSetsParser.Parse(source);
+    public static bool TryParse(string source, out SetFormula formula) => FiniteSetsParser.TryParse(source, out formula);
 
     public sealed override string ToString() => FiniteSetsPrinter.Print(this);
 }

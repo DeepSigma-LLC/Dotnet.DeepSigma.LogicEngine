@@ -19,6 +19,12 @@ public static class CtlParser
         return formula;
     }
 
+    public static bool TryParse(string source, out CtlFormula formula)
+    {
+        try { formula = Parse(source); return true; }
+        catch (FormatException) { formula = null!; return false; }
+    }
+
     private enum Kind { Id, LParen, RParen, LBracket, RBracket, Not, And, Or, Implies, Iff, End }
 
     private readonly record struct Token(Kind Kind, string Text);
@@ -50,7 +56,7 @@ public static class CtlParser
             if (char.IsLetterOrDigit(c) || c == '_')
             {
                 var start = i;
-                while (i < s.Length && (char.IsLetterOrDigit(s[i]) || s[i] == '_')) { i++; }
+                i = CharScanner.ReadWhile(s, i, CharScanner.IsIdentifierPart);
                 tokens.Add(new(Kind.Id, s[start..i]));
                 continue;
             }

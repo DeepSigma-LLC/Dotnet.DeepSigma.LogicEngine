@@ -19,6 +19,12 @@ public static class FolParser
         return formula;
     }
 
+    public static bool TryParse(string source, out FolFormula formula)
+    {
+        try { formula = Parse(source); return true; }
+        catch (FormatException) { formula = null!; return false; }
+    }
+
     private enum Kind { Id, LParen, RParen, Comma, Dot, Eq, Neq, Not, And, Or, Implies, Iff, Forall, Exists, End }
 
     private readonly record struct Token(Kind Kind, string Text);
@@ -52,16 +58,16 @@ public static class FolParser
                     else { tokens.Add(new(Kind.Not, "!")); i++; }
                     continue;
                 case '<':
-                    if (Matches(s, i, "<->")) { tokens.Add(new(Kind.Iff, "<->")); i += 3; continue; }
+                    if (CharScanner.Matches(s, i, "<->")) { tokens.Add(new(Kind.Iff, "<->")); i += 3; continue; }
                     throw new FormatException("Expected '<->'.");
                 case '-':
-                    if (Matches(s, i, "->")) { tokens.Add(new(Kind.Implies, "->")); i += 2; continue; }
+                    if (CharScanner.Matches(s, i, "->")) { tokens.Add(new(Kind.Implies, "->")); i += 2; continue; }
                     throw new FormatException("Expected '->'.");
             }
-            if (char.IsLetter(c) || c == '_')
+            if (CharScanner.IsIdentifierStart(c))
             {
                 var start = i;
-                while (i < s.Length && (char.IsLetterOrDigit(s[i]) || s[i] == '_')) { i++; }
+                i = CharScanner.ReadWhile(s, i, CharScanner.IsIdentifierPart);
                 var text = s[start..i];
                 tokens.Add(new(Keyword(text), text));
                 continue;
@@ -71,9 +77,6 @@ public static class FolParser
         tokens.Add(new(Kind.End, string.Empty));
         return tokens;
     }
-
-    private static bool Matches(string s, int i, string token)
-        => i + token.Length <= s.Length && s.AsSpan(i, token.Length).SequenceEqual(token);
 
     private static Kind Keyword(string text) => text switch
     {

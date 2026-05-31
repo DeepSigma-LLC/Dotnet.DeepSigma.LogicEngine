@@ -21,6 +21,7 @@ public abstract record FolFormula
     public static FolFormula operator |(FolFormula a, FolFormula b) => new FolOr(a, b);
 
     public static FolFormula Parse(string source) => FolParser.Parse(source);
+    public static bool TryParse(string source, out FolFormula formula) => FolParser.TryParse(source, out formula);
 
     public sealed override string ToString() => FolPrinter.Print(this);
 }
