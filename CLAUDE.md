@@ -10,6 +10,11 @@ SAT/SMT core. Its one dependency, `DeepSigma.Mathematics`, is a sibling repo con
 cross-repo project reference (exact-rational arithmetic, simplex, LP optimizer, group
 algebra).
 
+`src/DeepSigma.LogicEngine.Z3/` is an **optional, opt-in** parallel engine that solves the same
+ASTs with Z3 (the only project with a native dependency — `Microsoft.Z3`/`libz3`). The core stays
+pure-managed. See ARCHITECTURE.md "Optional Z3 backend" and the README capability matrix. Keep its
+`libz3` dependency out of the core and the native test project.
+
 ## Read these first
 
 - **[ARCHITECTURE.md](ARCHITECTURE.md)** — the encode → solve → decode convention, the

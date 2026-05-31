@@ -274,6 +274,29 @@ Say you want to add logic *Foo*. The mechanical steps:
 
 ---
 
+## Optional Z3 backend
+
+`src/DeepSigma.LogicEngine.Z3/` is an **optional, parallel** engine that reuses the existing
+front-end (parsers + public ASTs) and solves with [Z3](https://github.com/Z3Prover/z3) instead of
+the native solvers. It is a *whole-formula translation* — `Formula`/`SmtFormula` → Z3 expressions,
+solve, translate the model back — not an `ITheory` plugged into the native DPLL(T) loop.
+
+- **Two engines, one front-end.** Native = pure-managed, exact, bounded; Z3 = complete (e.g.
+  unbounded integers), fast at scale, but a **native dependency** (`Microsoft.Z3` bundles `libz3`).
+  The core project takes no dependency on Z3; consumers opt in by referencing the Z3 project.
+- **Parallel facades, not a hidden swap.** `Z3Reasoner` (propositional), `Z3Smt` (EUF/LRA/LIA/
+  arrays/combined; `Z3SmtTheory` adds unbounded `Lia`), and `Z3MaxSat` mirror the native APIs and
+  return a tri-valued `Z3Result` (`Satisfiable`/`Unsatisfiable`/**`Unknown`** — Z3 is honest about
+  not deciding quantified/nonlinear queries, mirroring `FolProofStatus`).
+- **Deliberately native-only:** CTL (explicit-state fixpoint, not an SMT query), model
+  counting/PSAT (Z3 isn't a #SAT counter), and the FOL resolution prover (Z3 quantifiers are
+  incomplete for validity and emit no resolution proofs).
+- **Differential oracle.** `tests/DeepSigma.LogicEngine.Z3.Tests/` cross-checks the two engines on
+  the shared fragment — any disagreement is a real bug in one of them. The native test project
+  stays `libz3`-free.
+
+See the README's "Projects and packages" section for the consumer-facing capability matrix.
+
 ## Testing philosophy
 
 Correctness rests on **differential testing**: each engine is checked against an

@@ -30,6 +30,7 @@ Pure managed code; its one dependency, [DeepSigma.Mathematics](https://github.co
 
 - [Install / getting started](#install--getting-started)
 - [Project layout](#project-layout)
+- [Projects and packages — which do I need?](#projects-and-packages--which-do-i-need)
 - [Quick tour](#quick-tour)
 - [Choosing an entry point](#choosing-an-entry-point)
 - [Building formulas](#building-formulas)
@@ -117,9 +118,12 @@ src/DeepSigma.LogicEngine/        the library
   Probabilistic/   ProbabilityConstraint, PsatSolver (coherence + bounds; column generation)
   FiniteSets/      SetExpr/ElementExpr/SetFormula, parser/printer, FiniteSetsSolver
   FiniteGroups/    GroupSpec, GroupFinder (SAT existence/find/enumerate/count-up-to-iso)
+src/DeepSigma.LogicEngine.Z3/     OPTIONAL Z3-backed engine (Z3Reasoner, Z3Smt, Z3MaxSat) — native libz3
 tests/DeepSigma.LogicEngine.Tests/    xUnit v3 test suite (+ DIMACS benchmarks)
+tests/DeepSigma.LogicEngine.Z3.Tests/ Z3 vs native differential tests (isolates the libz3 dependency)
 samples/DeepSigma.LogicEngine.Demo/    guided feature walkthrough
 samples/DeepSigma.LogicEngine.Recipes/ N-queens, Sudoku, graph coloring
+samples/DeepSigma.LogicEngine.Z3.Demo/ the optional Z3 engine in action
 ```
 
 Common namespaces:
@@ -143,6 +147,60 @@ using DeepSigma.LogicEngine.Probabilistic; // ProbabilityConstraint, PsatSolver
 using DeepSigma.LogicEngine.FiniteSets;   // SetFormula, SetExpr, ElementExpr, FiniteSetsSolver
 using DeepSigma.LogicEngine.FiniteGroups; // GroupFinder, GroupSpec
 using DeepSigma.Mathematics.Algebra;      // GroupTable, GroupTables
+using DeepSigma.LogicEngine.Z3;           // OPTIONAL: Z3Reasoner, Z3Smt, Z3SmtTheory, Z3MaxSat
+```
+
+---
+
+## Projects and packages — which do I need?
+
+| Project | Purpose | Reference it when… |
+|---------|---------|--------------------|
+| `DeepSigma.Mathematics` | Exact-rational arithmetic, simplex, LP optimizer, group algebra. The one dependency of the core engine. | Transitively — you don't reference it directly unless you use its types (`Rational`, `GroupTable`). |
+| **`DeepSigma.LogicEngine`** | The **pure-managed engine** — every logic, no native dependencies. This is the default. | **Almost always. Start here.** |
+| `DeepSigma.LogicEngine.Z3` | **Optional** Z3-backed engine (`Z3Reasoner`, `Z3Smt`, `Z3MaxSat`). Brings the native `libz3` binaries. | Add this *only* when you need Z3's completeness (e.g. unbounded integers), large-scale speed, or — as it grows — bit-vectors / quantifiers / nonlinear / strings. |
+
+Most consumers reference only `DeepSigma.LogicEngine`. The native engine is pure managed and
+exact; reach for `…​.Z3` when you specifically want what Z3 adds.
+
+### What is Z3, and what does it (not) do here?
+
+[Z3](https://github.com/Z3Prover/z3) is Microsoft Research's industry-standard **SMT solver** —
+complete, fast decision procedures across many theories (equality + uninterpreted functions,
+linear and nonlinear arithmetic, arrays, bit-vectors, quantifiers, strings) plus optimization /
+MaxSAT. It is MIT-licensed.
+
+- **What the Z3 engine does here:** solves the project's existing formula types via Z3 — SMT
+  *completely* (notably **unbounded** integer arithmetic, with no `[-bound, bound]` box), generally
+  faster at scale, with native (extensional) arrays, a tri-valued result (`Satisfiable` /
+  `Unsatisfiable` / `Unknown`), typed models (e.g. `x = 3`, `y = -1/2`), and a **timeout /
+  `CancellationToken`** the native engine lacks.
+- **What it does *not* do here:** it's a **native dependency** (not pure-managed); it can return
+  `Unknown` (e.g. for quantifiers/nonlinear); and it is **not** used for CTL model checking, model
+  counting / PSAT, or the first-order resolution prover — those stay on the native engine, by
+  design (Z3 is the wrong tool, or has different guarantees).
+
+### Capability matrix (native vs Z3)
+
+| Capability | Native engine | Z3 engine | Notes |
+|------------|:------:|:--:|-------|
+| Propositional SAT / validity / entailment | ✅ | ✅ (`Z3Reasoner`) | |
+| SMT: EUF, LRA, arrays, combined | ✅ | ✅ (`Z3Smt`) | Z3 is faster at scale |
+| SMT: linear **integer** arithmetic (LIA) | ✅ bounded box | ✅ **unbounded** | Z3 is complete |
+| MaxSAT | ✅ (`MaxSatSolver`) | ✅ (`Z3MaxSat`) | |
+| Modal / LTL / finite-sets / finite-groups | ✅ | ⏳ planned (`ISatSolver` seam) | encoders reused; Z3 backs the SAT |
+| Bit-vectors / quantifiers / nonlinear / strings | ❌ | ⏳ planned (Z3-only) | new theories Z3 adds |
+| CTL model checking | ✅ | — | explicit-state; not an SMT query |
+| Model counting / weighted counting / PSAT | ✅ | — | Z3 is a solver, not a #SAT counter |
+| First-order theorem proving (resolution + proofs) | ✅ | — | Z3 quantifiers are incomplete for validity |
+
+```csharp
+using DeepSigma.LogicEngine.Smt;
+using DeepSigma.LogicEngine.Z3;
+
+// Complete, unbounded integers — the native LIA box would miss this.
+var r = Z3Smt.Solve(LraParser.Parse("x = 100000"), Z3SmtTheory.Lia, new[] { "x" });
+Console.WriteLine($"{r.Status}, x = {r.Model!["x"]}");   // Satisfiable, x = 100000
 ```
 
 ---

@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\DeepSigma.LogicEngine.Z3\DeepSigma.LogicEngine.Z3.csproj" />
+    <ProjectReference Include="..\..\src\DeepSigma.LogicEngine\DeepSigma.LogicEngine.csproj" />
+  </ItemGroup>
+</Project>

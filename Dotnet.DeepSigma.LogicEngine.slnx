@@ -2,11 +2,14 @@
   <Folder Name="/samples/">
     <Project Path="samples/DeepSigma.LogicEngine.Demo/DeepSigma.LogicEngine.Demo.csproj" />
     <Project Path="samples/DeepSigma.LogicEngine.Recipes/DeepSigma.LogicEngine.Recipes.csproj" />
+    <Project Path="samples/DeepSigma.LogicEngine.Z3.Demo/DeepSigma.LogicEngine.Z3.Demo.csproj" />
   </Folder>
   <Folder Name="/src/">
     <Project Path="src/DeepSigma.LogicEngine/DeepSigma.LogicEngine.csproj" />
+    <Project Path="src/DeepSigma.LogicEngine.Z3/DeepSigma.LogicEngine.Z3.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/DeepSigma.LogicEngine.Tests/DeepSigma.LogicEngine.Tests.csproj" />
+    <Project Path="tests/DeepSigma.LogicEngine.Z3.Tests/DeepSigma.LogicEngine.Z3.Tests.csproj" />
   </Folder>
 </Solution>

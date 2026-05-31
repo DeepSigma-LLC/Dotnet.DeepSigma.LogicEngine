@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <!-- The Z3 SMT solver (Microsoft Research). MIT-licensed; the package bundles the
+         native libz3 binaries per RID. This project is the only one that takes a native
+         dependency; the core DeepSigma.LogicEngine stays pure-managed. -->
+    <PackageReference Include="Microsoft.Z3" Version="4.12.2" />
+    <ProjectReference Include="..\DeepSigma.LogicEngine\DeepSigma.LogicEngine.csproj" />
+  </ItemGroup>
+</Project>
