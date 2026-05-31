@@ -7,6 +7,17 @@ namespace DeepSigma.LogicEngine.Fuzzy;
 /// real interval [0, 1], and connectives are interpreted by a t-norm family
 /// (see <see cref="FuzzyLogic"/>). The AST is t-norm-agnostic; the chosen logic
 /// determines the semantics at solving time.
+///
+/// <para>
+/// Instead of just true/false, a fuzzy truth value is a number in [0, 1] — a
+/// "degree of truth" (0 = false, 1 = true, ½ = half-true). To give the connectives
+/// meaning we need a function that combines two such degrees for AND; that function
+/// is called a <em>t-norm</em>, and it fixes the matching OR, →, and ¬ as well.
+/// Different t-norms give different fuzzy logics (e.g. Gödel uses min/max,
+/// Łukasiewicz uses bounded sums — see <see cref="FuzzyLogic"/>). This type stores
+/// only the formula's structure; the t-norm is supplied at solving time, which is
+/// why the same AST can be evaluated under any fuzzy logic.
+/// </para>
 /// </summary>
 public abstract record FuzzyFormula
 {

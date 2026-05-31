@@ -7,6 +7,21 @@ namespace DeepSigma.LogicEngine.Cnf;
 /// Tseitin transformation. Produces an equisatisfiable CNF whose size is
 /// linear in the input. Auxiliary variables are introduced with a prefix
 /// chosen so as not to clash with any free variable of the input.
+///
+/// <para>
+/// Turning a formula into CNF by the naive method (distributing <c>∨</c> over
+/// <c>∧</c>) can blow the size up exponentially. Tseitin avoids that: it gives
+/// each subformula its own fresh variable and adds a few small clauses stating
+/// that the variable is <em>equivalent</em> to that subformula (e.g. for
+/// <c>g ⇔ (a ∧ b)</c> it emits the clauses encoding both directions). The whole
+/// formula then reduces to "the top variable is true" plus those definitions —
+/// linear in the input size. The result is <b>equisatisfiable</b> rather than
+/// logically equivalent: it has exactly the same satisfiable/unsatisfiable
+/// verdict, and any model restricted to the original variables is a model of the
+/// input — the auxiliary variables are the only difference. Use this when you only
+/// care about satisfiability; use <see cref="CnfTransformer"/> when you need a
+/// logically equivalent CNF.
+/// </para>
 /// </summary>
 public static class TseitinTransformer
 {

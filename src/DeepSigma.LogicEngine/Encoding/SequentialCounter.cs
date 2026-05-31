@@ -19,6 +19,17 @@ public readonly record struct CardinalityEncoding(Formula Constraint, IReadOnlyS
 /// CNF of size O(n·k) using O(n·k) auxiliary variables — linear in the bound,
 /// where the auxiliary-free <see cref="Cardinality"/> encoding is exponential in
 /// min(k, n−k). Prefer this when k is large.
+///
+/// <para>
+/// The idea is a running tally. Introduce counter variables where
+/// <c>s(i, j)</c> means "at least j of the first i inputs are true". Reading the
+/// inputs left to right, each input can push the tally up by at most one, so the
+/// counters at position i follow from those at i−1 plus the current input — a
+/// handful of clauses per step. The bound is then enforced by simply forbidding
+/// the tally from ever reaching k+1. Because each step only relates adjacent
+/// counters, the whole constraint is O(n·k) clauses instead of enumerating the
+/// exponentially many k-subsets.
+/// </para>
 /// </summary>
 public static class SequentialCounter
 {

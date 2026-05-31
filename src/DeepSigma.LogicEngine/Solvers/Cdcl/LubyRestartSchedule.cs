@@ -5,6 +5,16 @@ namespace DeepSigma.LogicEngine.Solvers.Cdcl;
 /// <c>luby(i) × unit</c>, where the Luby sequence is 1,1,2,1,1,2,4,1,1,2,1,1,2,4,8,…
 /// — a strategy with strong worst-case guarantees. The caller counts conflicts
 /// and asks whether the current budget is exhausted.
+///
+/// <para>
+/// Why restart at all: a single long search can get stuck deep in an unlucky part
+/// of the space, so periodically abandoning the current attempt (while keeping the
+/// learned clauses) often finds an answer faster. But the best restart frequency
+/// is unknown in advance. The Luby sequence hedges by interleaving many short runs
+/// with occasional longer ones; this universal schedule is provably within a
+/// logarithmic factor of the best fixed restart length for any instance — so it is
+/// a safe default when nothing is known about the problem.
+/// </para>
 /// </summary>
 internal sealed class LubyRestartSchedule
 {

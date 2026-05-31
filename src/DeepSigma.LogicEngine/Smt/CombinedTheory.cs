@@ -12,6 +12,21 @@ namespace DeepSigma.LogicEngine.Smt;
 /// Repeat to a fixpoint; a conflict in either theory means the conjunction is
 /// unsatisfiable. This decides formulas neither theory can settle alone, e.g.
 /// <c>x ≤ y ∧ y ≤ x ∧ f(x) ≠ f(y)</c>.
+///
+/// <para>
+/// Intuition: each theory understands only its own symbols (arithmetic vs.
+/// uninterpreted functions), and they meet only at variables that appear in both.
+/// So the theories can collaborate by telling each other just one kind of fact —
+/// "these two shared variables must be equal." The two conditions that make this
+/// exchange sufficient are mild: <em>stably infinite</em> means a satisfiable set
+/// of constraints always has a model with arbitrarily many elements (so the two
+/// theories can agree on a shared domain size), and <em>convex</em> means whenever
+/// a theory entails "some pair of these variables is equal" it already entails a
+/// specific pair (so it is enough to propagate definite equalities, never a
+/// disjunction). In the example, LRA derives <c>x = y</c> from <c>x ≤ y ∧ y ≤ x</c>
+/// and hands it to EUF, which then needs <c>f(x) = f(y)</c> by congruence —
+/// contradicting <c>f(x) ≠ f(y)</c>.
+/// </para>
 /// </summary>
 internal sealed class CombinedTheory : ITheory
 {

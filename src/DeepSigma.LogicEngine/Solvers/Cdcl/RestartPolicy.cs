@@ -17,7 +17,11 @@ internal interface IRestartPolicy
     void OnRestart();
 }
 
-/// <summary>Luby reluctant-doubling schedule: restart once a luby(i)×unit conflict budget is spent.</summary>
+/// <summary>
+/// A <em>fixed</em>, instance-independent restart schedule: restart once a <c>luby(i)×unit</c>
+/// conflict budget is spent (see <see cref="LubyRestartSchedule"/>). Contrast the
+/// <see cref="GlucoseRestartPolicy"/>, which adapts to how well the search is going.
+/// </summary>
 internal sealed class LubyRestartPolicy : IRestartPolicy
 {
     private readonly LubyRestartSchedule _schedule;

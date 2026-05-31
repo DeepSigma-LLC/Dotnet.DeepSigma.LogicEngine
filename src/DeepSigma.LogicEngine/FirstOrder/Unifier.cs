@@ -1,6 +1,18 @@
 namespace DeepSigma.LogicEngine.FirstOrder;
 
-/// <summary>Robinson unification: the most general unifier of two terms, with an occurs check.</summary>
+/// <summary>
+/// Robinson unification: the most general unifier of two terms, with an occurs check.
+///
+/// <para>
+/// Unifying two terms means finding a substitution for their variables that makes
+/// them syntactically identical — e.g. <c>f(x, b)</c> and <c>f(a, y)</c> unify via
+/// <c>x ↦ a, y ↦ b</c>. "Most general" means it commits to nothing beyond what is
+/// forced, so any other unifier is an instance of it; this is what lets resolution
+/// stay as general as possible. The <em>occurs check</em> refuses to bind a variable
+/// to a term that contains it (such as <c>x = f(x)</c>), which has no finite
+/// solution — without it the prover could build infinite terms.
+/// </para>
+/// </summary>
 public static class Unifier
 {
     /// <summary>The MGU of <paramref name="a"/> and <paramref name="b"/>, or null if they do not unify.</summary>

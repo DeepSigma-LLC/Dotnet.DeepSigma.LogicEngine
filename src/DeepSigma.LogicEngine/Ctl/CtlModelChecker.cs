@@ -7,6 +7,20 @@ namespace DeepSigma.LogicEngine.Ctl;
 /// <c>EX</c> a pre-image; the universal/derived operators reduce to these. Unlike
 /// the bounded LTL model checker, this is a <b>complete, exact</b> decision over the
 /// finite structure.
+///
+/// <para>
+/// How it works: for each subformula it computes the precise set of states where
+/// that subformula is true, starting from the atomic propositions and working
+/// outward. The path operators are computed by repeating a one-step rule until the
+/// set stops changing — a <em>fixed point</em>. <c>EX φ</c> is one step backward:
+/// the states with a successor in φ. <c>E[φ U ψ]</c> starts from the ψ-states and
+/// repeatedly adds any φ-state that can step into the set — it grows until it
+/// stabilises (a <b>least</b> fixpoint: "can reach ψ"). <c>EG φ</c> starts from all
+/// φ-states and repeatedly removes any with no successor still in the set — it
+/// shrinks until it stabilises (a <b>greatest</b> fixpoint: "can stay in φ
+/// forever", i.e. on a cycle). Because the structure is finite, both iterations are
+/// guaranteed to terminate.
+/// </para>
 /// </summary>
 public static class CtlModelChecker
 {

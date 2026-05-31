@@ -21,6 +21,26 @@ public enum FolProofStatus
 /// Resolution + factoring is refutation-complete for first-order logic; adding
 /// paramodulation with the reflexivity clause <c>x = x</c> extends completeness to
 /// logic with equality.
+///
+/// <para>
+/// In plain terms: to prove a conjecture we assume its negation and try to derive
+/// an outright contradiction — the empty clause. The "given-clause loop" keeps a
+/// pool of clauses and repeatedly takes one out and combines it with the others,
+/// adding whatever new clauses result. The combining steps are:
+/// <list type="bullet">
+/// <item><b>Resolution</b> — cancel a literal that appears positive in one clause
+/// and negative in another (after <em>unification</em> lines the two up), yielding
+/// the rest of both clauses joined together.</item>
+/// <item><b>Factoring</b> — collapse two literals of one clause that unify into a
+/// single literal, which can expose otherwise-hidden resolutions.</item>
+/// <item><b>Paramodulation</b> — "rewrite using an equation": given <c>s = t</c>,
+/// replace an occurrence of <c>s</c> by <c>t</c> elsewhere, so <c>=</c> is handled
+/// natively instead of through bulky equality axioms.</item>
+/// </list>
+/// <b>Subsumption</b> then throws away any clause already covered by a more general
+/// (smaller) one, which is what keeps the pool from exploding; the clause budget is
+/// the backstop since first-order proving is only semi-decidable.
+/// </para>
 /// </summary>
 internal sealed class FirstOrderResolver
 {

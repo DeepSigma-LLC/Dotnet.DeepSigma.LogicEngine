@@ -17,6 +17,21 @@ internal readonly record struct EufLiteral(int AtomId, bool Positive, EufAtomKin
 /// the subset of asserted atoms responsible — via a proof forest.
 ///
 /// <para>
+/// The question it answers: given some equalities, disequalities, and
+/// uninterpreted-function applications, can they all hold at once? The one rule
+/// about functions is <em>congruence</em> — equal inputs give equal outputs, so
+/// <c>a = b</c> forces <c>f(a) = f(b)</c>. The algorithm keeps a union-find
+/// structure that groups together every term currently known to be equal: each
+/// asserted equality merges two groups, and the congruence rule merges two
+/// function applications once their arguments have been merged. After this settles,
+/// the asserted facts are inconsistent exactly when some disequality <c>s ≠ t</c>
+/// has <c>s</c> and <c>t</c> in the same group. To explain <em>why</em> they
+/// merged (the conflict core), each merge records the assertion that caused it in a
+/// <b>proof forest</b>; walking the path between the two terms collects the
+/// responsible atoms.
+/// </para>
+///
+/// <para>
 /// A fresh instance is used per check. Congruence is propagated with a simple
 /// fixpoint over application terms; a signature-table/use-list scheme would make
 /// it near-linear and is noted as a future refinement.
