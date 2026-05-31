@@ -292,8 +292,14 @@ solve, translate the model back — not an `ITheory` plugged into the native DPL
   `ISatSolver` overloads of `ModalSolver`/`BoundedModelChecker`/`FiniteSetsSolver`/`GroupFinder`
   runs those logics on Z3 with no internals exposed; fuzzy routes through the public `FuzzyEncoder`.
 - **New theories live in a `Sorted/` layer** (`Sort` + `SortedExpr`, translated by `SortedToZ3`,
-  solved by `Z3Sorted`) — typed expressions for things the native engine cannot represent.
-  **Bit-vectors (QF_BV)** are implemented; quantifiers/nonlinear/strings extend the same layer.
+  solved by `Z3Sorted`) — typed expressions for things the native engine cannot represent:
+  **bit-vectors (QF_BV)**, unbounded **int/real** arithmetic (quantifiers + nonlinear), and
+  **strings**. This layer carries its own text front-end (`Z3SortedParser`/`Z3SortedPrinter`,
+  surfaced as `SortedExpr.Parse`/`ToString`) — a self-contained tokenizer/parser rather than the
+  core's shared `CharScanner`/`TokenReader`/`PrecedencePrinter` infrastructure, because that
+  infrastructure is `internal` to the core assembly and the Z3 project deliberately has no
+  `InternalsVisibleTo`. Being multi-sorted, its syntax opens with a variable-declaration prefix
+  (`bv8 x;`, `int n;`, …) that the single-sorted core front-ends never need.
 - **Deliberately native-only:** CTL (explicit-state fixpoint, not an SMT query), model
   counting/PSAT (Z3 isn't a #SAT counter), and the FOL resolution prover (Z3 quantifiers are
   incomplete for validity and emit no resolution proofs).

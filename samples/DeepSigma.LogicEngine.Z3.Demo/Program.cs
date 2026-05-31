@@ -64,4 +64,11 @@ var strQuery = SortedExpr.And(
     SortedExpr.Eq(SortedExpr.Length(s), SortedExpr.Int(3)));
 Console.WriteLine($"  exists s. s ++ \"bar\" == \"foobar\" & |s| == 3 satisfiable? {Z3Sorted.IsSatisfiable(strQuery)}  (s = \"foo\")");
 
+// 11. Text syntax — parse the sorted theories from a string, and print them back.
+Console.WriteLine("\n11. Text syntax (parse + print)");
+var parsed = SortedExpr.Parse("bv8 x; x + 1 == 0");
+Console.WriteLine($"  parse \"bv8 x; x + 1 == 0\" -> {Z3Sorted.Solve(parsed).Model!["x"]}");
+Console.WriteLine($"  print round-trip: {SortedExpr.Parse("int n; n*n == 49 & n > 0")}");
+Console.WriteLine($"  valid? forall int n . n + 1 > n -> {Z3Sorted.IsValid(SortedExpr.Parse("forall int n . n + 1 > n"))}");
+
 Console.WriteLine("\nDone.");

@@ -215,7 +215,19 @@ using DeepSigma.LogicEngine.Z3.Sorted;
 var x = SortedExpr.BitVecVar("x", 8);
 var bv = Z3Sorted.Solve(SortedExpr.Eq(x + SortedExpr.BitVec(1, 8), SortedExpr.BitVec(0, 8)));
 Console.WriteLine($"{bv.Status}, x = {bv.Model!["x"]}");   // Satisfiable, x = 255
+
+// …or write the same sorted theories as text. A declaration prefix gives each variable its sort.
+var same = Z3Sorted.Solve(SortedExpr.Parse("bv8 x; x + 1 == 0"));         // x = 255
+bool ok = Z3Sorted.IsValid(SortedExpr.Parse("forall int n . n + 1 > n")); // True
 ```
+
+The sorted-layer text syntax (`Z3SortedParser` / `SortedExpr.Parse`) opens with a declaration
+prefix — `bv8 x, y;`, `int n;`, `real x;`, `string s;` — followed by one boolean expression.
+It covers all four Z3-only theories: bit-vector arithmetic (`+ - *`, prefix `~`, and the
+function-style `bvand bvor bvxor shl lshr ashr ult … sge concat extract`), unbounded `int`/`real`
+arithmetic and comparisons, quantifiers (`forall int x, int y . …`), and strings (`++`, `|s|`,
+`contains`/`prefixof`/`suffixof`). Bit-vector literals are decimals (typed from context) or
+`#b1010` / `#xAB`. `SortedExpr.ToString()` prints the same syntax back, round-trippably.
 
 ---
 

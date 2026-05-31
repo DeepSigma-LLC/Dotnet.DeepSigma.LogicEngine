@@ -4,9 +4,11 @@ using DeepSigma.Mathematics.Algebra;
 namespace DeepSigma.LogicEngine.Z3.Sorted;
 
 /// <summary>
-/// A sorted (typed) expression for the Z3-only theories. Build with the static factories and
-/// operators, then hand a boolean-sorted expression to <see cref="Z3Sorted"/>. This is the
-/// front end for theories the native engine cannot express; bit-vectors are the first.
+/// A sorted (typed) expression for the Z3-only theories — fixed-width bit-vectors, unbounded
+/// integer/real arithmetic (with quantifiers and nonlinear terms), and strings. Build one with the
+/// static factories and operators, or parse it from text with <see cref="Parse(string)"/>; then
+/// hand a boolean-sorted expression to <see cref="Z3Sorted"/>. This is the front end for theories
+/// the native engine cannot express.
 ///
 /// <para>
 /// Operators are bit-vector algebra: <c>+ - *</c> (add/sub/mul, and unary <c>-</c> negate),
@@ -18,6 +20,19 @@ public abstract record SortedExpr
 {
     /// <summary>The sort of this expression.</summary>
     public abstract Sort Sort { get; }
+
+    /// <summary>
+    /// Parses the sorted-layer syntax (a declaration prefix followed by a boolean expression) into a
+    /// <see cref="SortedExpr"/>. See <see cref="Z3SortedParser"/> for the grammar. Throws
+    /// <see cref="FormatException"/> on malformed input.
+    /// </summary>
+    public static SortedExpr Parse(string source) => Z3SortedParser.Parse(source);
+
+    /// <summary>Attempts to parse the sorted-layer syntax, returning false on malformed input.</summary>
+    public static bool TryParse(string source, out SortedExpr expression) => Z3SortedParser.TryParse(source, out expression);
+
+    /// <summary>Renders this expression in the textual syntax accepted by <see cref="Parse(string)"/> (round-trippable).</summary>
+    public sealed override string ToString() => Z3SortedPrinter.Print(this);
 
     // --- leaves ---
 
@@ -240,6 +255,27 @@ internal sealed record ArithCompare(ArithCmp Op, SortedExpr Left, SortedExpr Rig
 internal sealed record Quantifier(bool IsForall, IReadOnlyList<SortedVar> BoundVariables, SortedExpr Body) : SortedExpr
 {
     public override Sort Sort => Sort.Bool;
+
+    // The compiler-synthesized record equality compares BoundVariables by reference; override it so
+    // two structurally-identical quantifiers (e.g. a parsed expression and its reprinted-and-reparsed
+    // form) compare equal, consistent with every other SortedExpr node.
+    public bool Equals(Quantifier? other)
+        => other is not null
+            && IsForall == other.IsForall
+            && Body == other.Body
+            && BoundVariables.SequenceEqual(other.BoundVariables);
+
+    public override int GetHashCode()
+    {
+        var hash = new HashCode();
+        hash.Add(IsForall);
+        hash.Add(Body);
+        foreach (var variable in BoundVariables)
+        {
+            hash.Add(variable);
+        }
+        return hash.ToHashCode();
+    }
 }
 
 internal enum StrPredOp { Contains, PrefixOf, SuffixOf }
