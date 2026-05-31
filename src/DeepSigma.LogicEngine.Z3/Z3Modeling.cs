@@ -32,6 +32,11 @@ internal static class Z3Modeling
         {
             return new Z3Value(Z3ValueKind.Integer, text, integer: integer.BigInteger);
         }
+        if (value is MZ3.BitVecNum bitVector)
+        {
+            // A bit-vector's value as an unsigned integer.
+            return new Z3Value(Z3ValueKind.Integer, text, integer: bitVector.BigInteger);
+        }
         if (value is MZ3.RatNum rational)
         {
             return new Z3Value(Z3ValueKind.Rational, text, rational: Rational.Of(rational.BigIntNumerator, rational.BigIntDenominator));

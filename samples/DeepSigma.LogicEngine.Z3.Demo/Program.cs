@@ -1,6 +1,7 @@
 using DeepSigma.LogicEngine.Formulas;
 using DeepSigma.LogicEngine.Smt;
 using DeepSigma.LogicEngine.Z3;
+using DeepSigma.LogicEngine.Z3.Sorted;
 
 Console.WriteLine("DeepSigma.LogicEngine — Z3 backend demo");
 Console.WriteLine("=======================================");
@@ -38,5 +39,29 @@ Console.WriteLine($"  select(store(a,i,v),i) = v valid? {Z3Smt.IsValid(SmtParser
 Console.WriteLine("\n7. Cancellation / timeout");
 var timed = Z3Smt.Solve(SmtFormula.Parse("a = b"), Z3SmtTheory.Euf, timeout: TimeSpan.FromSeconds(1));
 Console.WriteLine($"  a = b (1s budget) -> {timed.Status}");
+
+// 8. Bit-vectors (QF_BV) — a theory the native engine cannot express at all.
+Console.WriteLine("\n8. Bit-vectors (8-bit) — Z3-only");
+var x = SortedExpr.BitVecVar("x", 8);
+var bv = Z3Sorted.Solve(SortedExpr.Eq(x + SortedExpr.BitVec(1, 8), SortedExpr.BitVec(0, 8)));
+Console.WriteLine($"  x + 1 == 0 (mod 256) -> {bv.Status}, x = {bv.Model!["x"]}  (overflow wraps)");
+Console.WriteLine($"  x & x == x valid? {Z3Sorted.IsValid(SortedExpr.Eq(x & x, x))}");
+
+// 9. Nonlinear arithmetic + quantifiers — full SMT, Z3-only.
+Console.WriteLine("\n9. Nonlinear arithmetic + quantifiers — Z3-only");
+var n = SortedExpr.IntVar("n");
+var sq = Z3Sorted.Solve(SortedExpr.And(SortedExpr.Eq(n * n, SortedExpr.Int(49)), SortedExpr.Gt(n, SortedExpr.Int(0))));
+Console.WriteLine($"  n*n == 49 & n > 0 -> {sq.Status}, n = {sq.Model!["n"]}");
+var q = SortedExpr.ForAll(n, SortedExpr.Gt(n + SortedExpr.Int(1), n));
+Console.WriteLine($"  forall n. n + 1 > n valid? {Z3Sorted.IsValid(q)}");
+
+// 10. Strings / sequences — Z3-only.
+Console.WriteLine("\n10. Strings — Z3-only");
+Console.WriteLine($"  \"foo\" ++ \"bar\" == \"foobar\" valid? {Z3Sorted.IsValid(SortedExpr.Eq(SortedExpr.StringConcat(SortedExpr.Str("foo"), SortedExpr.Str("bar")), SortedExpr.Str("foobar")))}");
+var s = SortedExpr.StringVar("s");
+var strQuery = SortedExpr.And(
+    SortedExpr.Eq(SortedExpr.StringConcat(s, SortedExpr.Str("bar")), SortedExpr.Str("foobar")),
+    SortedExpr.Eq(SortedExpr.Length(s), SortedExpr.Int(3)));
+Console.WriteLine($"  exists s. s ++ \"bar\" == \"foobar\" & |s| == 3 satisfiable? {Z3Sorted.IsSatisfiable(strQuery)}  (s = \"foo\")");
 
 Console.WriteLine("\nDone.");

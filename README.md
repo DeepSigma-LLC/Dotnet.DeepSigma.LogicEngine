@@ -158,7 +158,7 @@ using DeepSigma.LogicEngine.Z3;           // OPTIONAL: Z3Reasoner, Z3Smt, Z3SmtT
 |---------|---------|--------------------|
 | `DeepSigma.Mathematics` | Exact-rational arithmetic, simplex, LP optimizer, group algebra. The one dependency of the core engine. | Transitively — you don't reference it directly unless you use its types (`Rational`, `GroupTable`). |
 | **`DeepSigma.LogicEngine`** | The **pure-managed engine** — every logic, no native dependencies. This is the default. | **Almost always. Start here.** |
-| `DeepSigma.LogicEngine.Z3` | **Optional** Z3-backed engine (`Z3Reasoner`, `Z3Smt`, `Z3MaxSat`). Brings the native `libz3` binaries. | Add this *only* when you need Z3's completeness (e.g. unbounded integers), large-scale speed, or — as it grows — bit-vectors / quantifiers / nonlinear / strings. |
+| `DeepSigma.LogicEngine.Z3` | **Optional** Z3-backed engine (`Z3Reasoner`, `Z3Smt`, `Z3MaxSat`). Brings the native `libz3` binaries. | Add this *only* when you need Z3's completeness (e.g. unbounded integers), large-scale speed, or its Z3-only theories: bit-vectors, nonlinear arithmetic, quantifiers, and strings. |
 
 Most consumers reference only `DeepSigma.LogicEngine`. The native engine is pure managed and
 exact; reach for `…​.Z3` when you specifically want what Z3 adds.
@@ -190,7 +190,10 @@ MaxSAT. It is MIT-licensed.
 | MaxSAT | ✅ (`MaxSatSolver`) | ✅ (`Z3MaxSat`) | |
 | Modal / LTL / finite-sets / finite-groups | ✅ | ✅ (`ISatSolver` seam) | pass a `Z3SatSolver` to the facade; Z3 backs the SAT |
 | Fuzzy (Gödel / Łukasiewicz) | ✅ | ✅ (`FuzzyEncoder` → `Z3Smt`) | the reduction to LRA is public |
-| Bit-vectors / quantifiers / nonlinear / strings | ❌ | ⏳ planned (Z3-only) | new theories Z3 adds |
+| Bit-vectors (QF_BV) | ❌ | ✅ (`Z3Sorted` + `SortedExpr`) | fixed-width; arithmetic, bitwise, shifts, concat/extract, signed+unsigned compare |
+| Nonlinear arithmetic (NIA / NRA) | ❌ | ✅ (`Z3Sorted` + `SortedExpr`) | Int/Real sorts with `var·var`; the native engine is linear-only |
+| Quantifiers (∀ / ∃) | ❌ | ✅ (`SortedExpr.ForAll`/`Exists`) | full SMT; may return `Unknown` for hard fragments |
+| Strings / sequences | ❌ | ✅ (`Z3Sorted` + `SortedExpr`) | length, concat, contains / prefix / suffix; solve for unknown strings |
 | CTL model checking | ✅ | — | explicit-state; not an SMT query |
 | Model counting / weighted counting / PSAT | ✅ | — | Z3 is a solver, not a #SAT counter |
 | First-order theorem proving (resolution + proofs) | ✅ | — | Z3 quantifiers are incomplete for validity |
@@ -206,6 +209,12 @@ Console.WriteLine($"{r.Status}, x = {r.Model!["x"]}");   // Satisfiable, x = 100
 // Encoder logics ride Z3 through the existing ISatSolver seam — just pass a Z3SatSolver.
 using DeepSigma.LogicEngine.Modal;
 bool valid = ModalSolver.IsValid(ModalParser.Parse("[]p -> p"), ModalSystem.T, new Z3SatSolver());
+
+// Bit-vectors (Z3-only) — 8-bit overflow wraps around.
+using DeepSigma.LogicEngine.Z3.Sorted;
+var x = SortedExpr.BitVecVar("x", 8);
+var bv = Z3Sorted.Solve(SortedExpr.Eq(x + SortedExpr.BitVec(1, 8), SortedExpr.BitVec(0, 8)));
+Console.WriteLine($"{bv.Status}, x = {bv.Model!["x"]}");   // Satisfiable, x = 255
 ```
 
 ---

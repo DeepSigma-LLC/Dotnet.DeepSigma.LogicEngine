@@ -288,6 +288,12 @@ solve, translate the model back — not an `ITheory` plugged into the native DPL
   arrays/combined; `Z3SmtTheory` adds unbounded `Lia`), and `Z3MaxSat` mirror the native APIs and
   return a tri-valued `Z3Result` (`Satisfiable`/`Unsatisfiable`/**`Unknown`** — Z3 is honest about
   not deciding quantified/nonlinear queries, mirroring `FolProofStatus`).
+- **Encoder logics ride the `ISatSolver` seam.** Passing a `Z3SatSolver` to the (additive)
+  `ISatSolver` overloads of `ModalSolver`/`BoundedModelChecker`/`FiniteSetsSolver`/`GroupFinder`
+  runs those logics on Z3 with no internals exposed; fuzzy routes through the public `FuzzyEncoder`.
+- **New theories live in a `Sorted/` layer** (`Sort` + `SortedExpr`, translated by `SortedToZ3`,
+  solved by `Z3Sorted`) — typed expressions for things the native engine cannot represent.
+  **Bit-vectors (QF_BV)** are implemented; quantifiers/nonlinear/strings extend the same layer.
 - **Deliberately native-only:** CTL (explicit-state fixpoint, not an SMT query), model
   counting/PSAT (Z3 isn't a #SAT counter), and the FOL resolution prover (Z3 quantifiers are
   incomplete for validity and emit no resolution proofs).
