@@ -1,12 +1,16 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <!-- Enforce that every public member is documented (CS1591 becomes an error under the repo's
          warnings-as-errors), matching the optional Z3 project. -->
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+    <Title>DeepSigma.LogicEngine</Title>
+    <Version>1.0.0</Version>
+    <Authors>DeepSigma LLC</Authors>
+    <Description>A dotnet project for logical evaluation.</Description>
+    <PackageProjectUrl>https://github.com/DeepSigma-LLC/Dotnet.DeepSigma.LogicEngine</PackageProjectUrl>
   </PropertyGroup>
   <ItemGroup>
-    <!-- Exact-rational arithmetic + simplex for the LRA theory. Cross-repo project
-         reference for now; switch to a versioned PackageReference at release. -->
-    <ProjectReference Include="..\..\..\Dotnet.DeepSigma.Mathematics\DeepSigma.Mathematics\DeepSigma.Mathematics.csproj" />
+    <PackageReference Include="DeepSigma.Mathematics" Version="2.5.0" />
   </ItemGroup>
 </Project>
