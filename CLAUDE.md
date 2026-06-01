@@ -28,7 +28,7 @@ pure-managed. See ARCHITECTURE.md "Optional Z3 backend" and the README capabilit
 
 ```bash
 dotnet build                                   # warnings-as-errors, net10.0
-dotnet test tests/DeepSigma.LogicEngine.Tests  # full suite (Debug runs CDCL invariant asserts)
+dotnet test tests/DeepSigma.LogicEngine.Tests  # native suite, 478 tests (Debug runs CDCL invariant asserts)
 dotnet run --project samples/DeepSigma.LogicEngine.Demo     # guided feature walkthrough
 dotnet run --project samples/DeepSigma.LogicEngine.Recipes -c Release  # N-queens, Sudoku, coloring
 ```

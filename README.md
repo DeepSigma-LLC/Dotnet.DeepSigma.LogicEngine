@@ -22,7 +22,9 @@ A .NET 10 **multi-logic reasoning engine**. It started as a propositional satisf
 
 Most capabilities follow one pattern — **encode into the SAT/SMT core, solve, decode** — so the heavy machinery (CDCL, DPLL(T), the exact simplex) is shared and the breadth is mostly thin, well-tested front-ends.
 
-Pure managed code; its one dependency, [DeepSigma.Mathematics](https://github.com/DeepSigma-LLC/Dotnet.DeepSigma.Mathematics) (exact-rational arithmetic, a simplex for LRA, an exact LP optimizer with duals for PSAT, finite-group `GroupTable` algebra, and discrete Bayesian-network inference), is also managed. Builds warnings-as-errors and ships with **467 tests** (plus the exact-arithmetic, LP-optimizer, group-algebra, and graphical-model tests in DeepSigma.Mathematics). Correctness is anchored by **differential testing** — each engine is checked against an independent brute-force oracle.
+An optional, opt-in **Z3 backend** (the separate `DeepSigma.LogicEngine.Z3` project) solves the same ASTs with Microsoft's Z3 — adding completeness (unbounded integers), speed at scale, and theories the native engine doesn't express: bit-vectors, nonlinear arithmetic, quantified SMT, and strings. The core stays pure-managed; Z3 is the only part with a native dependency. See [Projects and packages](#projects-and-packages--which-do-i-need) and the [capability matrix](#capability-matrix-native-vs-z3).
+
+Pure managed code; its one dependency, [DeepSigma.Mathematics](https://github.com/DeepSigma-LLC/Dotnet.DeepSigma.Mathematics) (exact-rational arithmetic, a simplex for LRA, an exact LP optimizer with duals for PSAT, finite-group `GroupTable` algebra, and discrete Bayesian-network inference), is also managed. Builds warnings-as-errors and ships with **478 tests** in the core suite — plus 89 differential tests for the optional Z3 engine, and the exact-arithmetic, LP-optimizer, group-algebra, and graphical-model tests in DeepSigma.Mathematics. Correctness is anchored by **differential testing** — each engine is checked against an independent brute-force oracle.
 
 ---
 
@@ -979,7 +981,7 @@ The other parsers share these connectives and add their own atoms/operators:
 
 ## Limitations
 
-- **Logics covered:** propositional, SMT (EUF, LRA, LIA, arrays, and EUF+LRA combination), first-order logic, MaxSAT, LTL, CTL, modal K/T/B/S4/S5, fuzzy (Gödel/Łukasiewicz), probabilistic (PSAT), finite-set, and finite-group. No bit-vectors; arrays are non-extensional; theory combination covers EUF+LRA (not LIA/arrays); no QBF/ASP. First-order proving is semi-decidable (budgeted `Unknown`); LIA is decided within a bounded integer box.
+- **Native-engine scope:** propositional, SMT (EUF, LRA, LIA, arrays, and EUF+LRA combination), first-order logic, MaxSAT, LTL, CTL, modal K/T/B/S4/S5, fuzzy (Gödel/Łukasiewicz), probabilistic (PSAT), finite-set, and finite-group. Within the native engine: arrays are non-extensional; theory combination covers EUF+LRA only (not LIA/arrays); LIA is decided within a bounded integer box; first-order proving is semi-decidable (budgeted `Unknown`); no QBF/ASP. Several of these are **lifted by the optional Z3 backend** — unbounded LIA, bit-vectors, nonlinear arithmetic, quantified SMT, and strings (see the [capability matrix](#capability-matrix-native-vs-z3)).
 - **Finite-set** cardinality reasoning and **finite-group** model finding are bounded/finite: set cardinality is decided relative to the universe size, and group search scales with an O(n⁶) associativity encoding (existence to ~order 10, isomorphism counting to ~order 8).
 - **Bounded methods** (LTL BMC, modal) are complete only up to their search bound.
 - EUF/LRA theory solvers are **rebuild-per-check** with no incremental push/pop or eager theory propagation — fine for teaching and modest problems, not tuned for large industrial instances.
@@ -993,7 +995,7 @@ These are deliberate scope boundaries, not bugs — see the roadmap.
 
 ```bash
 dotnet build                                   # warnings-as-errors, net10.0
-dotnet test                                    # 398 tests
+dotnet test                                    # 478 core tests + 89 Z3 differential tests
 dotnet run --project samples/DeepSigma.LogicEngine.Demo
 ```
 
@@ -1005,7 +1007,7 @@ Correctness rests on **differential testing**: each engine is checked against an
 
 Documented future directions (some noted as hooks in the code):
 
-- Unbounded LIA via the Omega test (the current LIA is bounded); **extensional** arrays.
+- Unbounded LIA in the **native** engine via the Omega test (it's currently bounded — the optional Z3 backend already provides unbounded LIA); **extensional** arrays in the native array solver.
 - **Theory combination** beyond EUF+LRA (folding in LIA / arrays); eager theory propagation; push/pop incremental theory state.
 - First-order refinements: ordered/selection-based resolution and a finite model finder.
 - Scalable model counting via **d-DNNF** knowledge compilation.
