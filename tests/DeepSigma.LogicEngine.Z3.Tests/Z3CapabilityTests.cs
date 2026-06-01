@@ -1,5 +1,6 @@
 using System.Numerics;
 using DeepSigma.LogicEngine.Cnf;
+using DeepSigma.LogicEngine.Common;
 using DeepSigma.LogicEngine.Formulas;
 using DeepSigma.LogicEngine.Smt;
 using DeepSigma.LogicEngine.Solvers.MaxSat;
@@ -18,8 +19,9 @@ public class Z3CapabilityTests
         var f = LraParser.Parse("x = 100000");
         var intVars = new[] { "x" };
 
-        // Native LIA is complete only inside [-bound, bound]; 100000 is outside the default-ish small box.
-        Assert.False(LiaSolver.IsSatisfiable(f, intVars, bound: 1000));
+        // Native LIA only searches inside [-bound, bound]; with no solution in the box it can only say
+        // Unknown (not a proof of unsatisfiability), whereas Z3 finds the real solution at 100000.
+        Assert.Equal(Verdict.Unknown, LiaSolver.IsSatisfiable(f, intVars, bound: 1000));
 
         // Z3's integer arithmetic is unbounded: it finds the solution.
         var result = Z3SmtReasoner.Solve(f, Z3SmtTheory.Lia, intVars);
@@ -61,6 +63,20 @@ public class Z3CapabilityTests
         Assert.Equal(Z3Status.Satisfiable, z3.Status);
         Assert.Equal(1, native.Cost);
         Assert.Equal(native.Cost, z3.Cost);
+    }
+
+    [Fact]
+    public void MaxSat_InfeasibleHardClauses_BothEnginesReportUnsat()
+    {
+        // Hard clauses (a) ∧ (¬a) have no feasible assignment: both engines report it (no throw).
+        var hard = new[] { new[] { Literal.Positive("a") }, new[] { Literal.Negative("a") } };
+        var soft = new[] { new SoftClause(new[] { Literal.Positive("b") }, 1) };
+
+        var native = new MaxSatSolver(hard, soft).Solve();
+        var z3 = Z3MaxSatSolver.Solve(hard, soft);
+
+        Assert.False(native.IsSatisfiable);
+        Assert.Equal(Z3Status.Unsatisfiable, z3.Status);
     }
 
     [Fact]

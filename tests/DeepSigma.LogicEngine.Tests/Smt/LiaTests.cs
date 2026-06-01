@@ -1,4 +1,5 @@
 using System.Numerics;
+using DeepSigma.LogicEngine.Common;
 using DeepSigma.LogicEngine.Smt;
 using DeepSigma.Mathematics.Algebra;
 using DeepSigma.Mathematics.Optimization.Exact;
@@ -14,8 +15,8 @@ public class LiaTests
     public void IntegerInfeasibility_DiffersFromReal()
     {
         var f = LraParser.Parse("2*x = 1");
-        Assert.True(LraSolver.IsSatisfiable(f));                 // x = 1/2 over the reals
-        Assert.False(LiaSolver.IsSatisfiable(f, new[] { "x" })); // no integer x
+        Assert.True(LraSolver.IsSatisfiable(f));                                   // x = 1/2 over the reals
+        Assert.Equal(Verdict.Unknown, LiaSolver.IsSatisfiable(f, new[] { "x" }));  // no integer x in the box
     }
 
     [Fact]
@@ -33,16 +34,17 @@ public class LiaTests
     public void MixedIntegerReal_IsSatisfiableButIntegerOnlyIsNot()
     {
         var f = LraParser.Parse("x = 2*y & x = 1");
-        Assert.True(LiaSolver.IsSatisfiable(f, new[] { "x" }));        // y = 1/2 is a real
-        Assert.False(LiaSolver.IsSatisfiable(f, new[] { "x", "y" }));  // y would have to be 1/2
+        Assert.Equal(Verdict.True, LiaSolver.IsSatisfiable(f, new[] { "x" }));            // y = 1/2 is a real
+        Assert.Equal(Verdict.Unknown, LiaSolver.IsSatisfiable(f, new[] { "x", "y" }));    // y would have to be 1/2
     }
 
+    // A solution in the box ⇒ Verdict.True; none in the box ⇒ Verdict.Unknown (not a global unsat proof).
     [Theory]
-    [InlineData("x >= 1 & x <= 3", true)]
-    [InlineData("x >= 1 & x <= 0", false)]
-    [InlineData("x > 0 & x < 1", false)]   // strict boundary: no integer strictly between 0 and 1
-    [InlineData("x > 0 & x < 2", true)]    // x = 1
-    public void Bounds_DecideIntegerFeasibility(string input, bool expected)
+    [InlineData("x >= 1 & x <= 3", Verdict.True)]
+    [InlineData("x >= 1 & x <= 0", Verdict.Unknown)]
+    [InlineData("x > 0 & x < 1", Verdict.Unknown)]   // strict boundary: no integer strictly between 0 and 1
+    [InlineData("x > 0 & x < 2", Verdict.True)]      // x = 1
+    public void Bounds_DecideIntegerFeasibility(string input, Verdict expected)
     {
         Assert.Equal(expected, LiaSolver.IsSatisfiable(LraParser.Parse(input), new[] { "x" }));
     }
@@ -50,9 +52,11 @@ public class LiaTests
     [Fact]
     public void Validity_AndEntailment()
     {
-        Assert.True(LiaSolver.IsValid(LraParser.Parse("x <= 5 -> x <= 6"), new[] { "x" }));
-        Assert.True(LiaSolver.Entails(new[] { LraParser.Parse("x >= 2") }, LraParser.Parse("x >= 1"), new[] { "x" }));
-        Assert.False(LiaSolver.Entails(new[] { LraParser.Parse("x >= 1") }, LraParser.Parse("x >= 2"), new[] { "x" }));
+        // A bounded box can refute (find a counter-example) but cannot prove validity/entailment,
+        // so genuinely-valid/entailed queries return Unknown; a real counter-example returns False.
+        Assert.Equal(Verdict.Unknown, LiaSolver.IsValid(LraParser.Parse("x <= 5 -> x <= 6"), new[] { "x" }));
+        Assert.Equal(Verdict.Unknown, LiaSolver.Entails(new[] { LraParser.Parse("x >= 2") }, LraParser.Parse("x >= 1"), new[] { "x" }));
+        Assert.Equal(Verdict.False, LiaSolver.Entails(new[] { LraParser.Parse("x >= 1") }, LraParser.Parse("x >= 2"), new[] { "x" }));
     }
 
     [Fact]
@@ -75,7 +79,8 @@ public class LiaTests
             var formula = RandomFormula(rng, depth: 2);
             var byLia = LiaSolver.IsSatisfiable(formula, XY, bound);
             var byEnumeration = HasIntegerPoint(formula, bound);
-            Assert.Equal(byEnumeration, byLia);
+            // A point in the box ⇒ True; otherwise Unknown (the bounded box never proves global unsat).
+            Assert.Equal(byEnumeration ? Verdict.True : Verdict.Unknown, byLia);
         }
     }
 

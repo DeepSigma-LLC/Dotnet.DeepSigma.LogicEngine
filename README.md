@@ -24,7 +24,7 @@ Most capabilities follow one pattern — **encode into the SAT/SMT core, solve, 
 
 An optional, opt-in **Z3 backend** (the separate `DeepSigma.LogicEngine.Z3` project) solves the same ASTs with Microsoft's Z3 — adding completeness (unbounded integers), speed at scale, and theories the native engine doesn't express: bit-vectors, nonlinear arithmetic, quantified SMT, and strings. The core stays pure-managed; Z3 is the only part with a native dependency. See [Projects and packages](#projects-and-packages--which-do-i-need) and the [capability matrix](#capability-matrix-native-vs-z3).
 
-Pure managed code; its one dependency, [DeepSigma.Mathematics](https://github.com/DeepSigma-LLC/Dotnet.DeepSigma.Mathematics) (exact-rational arithmetic, a simplex for LRA, an exact LP optimizer with duals for PSAT, finite-group `GroupTable` algebra, and discrete Bayesian-network inference), is also managed. Builds warnings-as-errors and ships with **478 tests** in the core suite — plus 89 differential tests for the optional Z3 engine, and the exact-arithmetic, LP-optimizer, group-algebra, and graphical-model tests in DeepSigma.Mathematics. Correctness is anchored by **differential testing** — each engine is checked against an independent brute-force oracle.
+Pure managed code; its one dependency, [DeepSigma.Mathematics](https://github.com/DeepSigma-LLC/Dotnet.DeepSigma.Mathematics) (exact-rational arithmetic, a simplex for LRA, an exact LP optimizer with duals for PSAT, finite-group `GroupTable` algebra, and discrete Bayesian-network inference), is also managed. Builds warnings-as-errors and ships with **478 tests** in the core suite — plus 90 differential tests for the optional Z3 engine, and the exact-arithmetic, LP-optimizer, group-algebra, and graphical-model tests in DeepSigma.Mathematics. Correctness is anchored by **differential testing** — each engine is checked against an independent brute-force oracle.
 
 ---
 
@@ -211,8 +211,9 @@ var r = Z3SmtReasoner.Solve(LraParser.Parse("x = 100000"), Z3SmtTheory.Lia, new[
 Console.WriteLine($"{r.Status}, x = {r.Model!["x"]}");   // Satisfiable, x = 100000
 
 // Encoder logics ride Z3 through the existing ISatSolver seam — just pass a Z3SatSolver.
+using DeepSigma.LogicEngine.Common;   // Verdict
 using DeepSigma.LogicEngine.Modal;
-bool valid = ModalSolver.IsValid(ModalParser.Parse("[]p -> p"), ModalSystem.T, new Z3SatSolver());
+Verdict valid = ModalSolver.IsValid(ModalParser.Parse("[]p -> p"), ModalSystem.T, new Z3SatSolver()); // Verdict.Unknown (bounded)
 
 // Bit-vectors (Z3-only) — 8-bit overflow wraps around.
 using DeepSigma.LogicEngine.Z3.Sorted;
@@ -268,15 +269,23 @@ formula type exposes both `Parse` and `TryParse`.
 |-------|-----------|---------------------|
 | Propositional | `Formula.Parse` · `Formula.Var/All/Any` · `& \| !` | `Reasoner.IsValid` / `IsSatisfiable` / `Entails` / `FindModel` / `CountModels` |
 | SMT (EUF, LRA, arrays, EUF+LRA) | `SmtFormula.Parse` (equality/UF) · `LraParser.Parse` (arithmetic) · factories | `SmtReasoner.IsValid` / `IsSatisfiable` / `Entails` / `Solve` `(f, SmtTheory.X)` |
-| SMT — linear **integer** arithmetic (LIA) | `LraParser.Parse` | `LiaSolver.*(f, integerVariables, bound)` (+ `FindModel`) |
+| SMT — linear **integer** arithmetic (LIA) | `LraParser.Parse` | `LiaSolver.*(f, integerVariables, bound)` → `Verdict` (bounded box; + `FindModel`) |
 | First-order | `FolFormula.Parse` · factories | `FirstOrderProver.IsValid` / `Entails` → `FolProofStatus` |
-| LTL | `LtlFormula.Parse` · factories | `BoundedModelChecker.IsSatisfiable` / `FindWitness` / `FindCounterexample` |
+| LTL | `LtlFormula.Parse` · factories | `BoundedModelChecker.IsSatisfiable` → `Verdict` / `FindWitness` / `FindCounterexample` |
 | CTL | `CtlFormula.Parse` · factories | `CtlModelChecker.Holds` / `SatisfyingStates` |
-| Modal | `ModalFormula.Parse` · factories | `ModalSolver.IsValid` / `IsSatisfiable` `(f, ModalSystem.X)` |
+| Modal | `ModalFormula.Parse` · factories | `ModalSolver.IsValid` / `IsSatisfiable` `(f, ModalSystem.X)` → `Verdict` |
 | Fuzzy | factories · `& \| !` (no text parser) | `FuzzySolver.IsValid` / `IsSatisfiable` `(f, FuzzyLogic.X)` |
 | Probabilistic (PSAT) | `ProbabilityConstraint.Exactly/AtMost/AtLeast` over `Formula` | `PsatSolver.IsConsistent` / `Bounds` |
 | Finite sets | `SetFormula.Parse` · factories | `FiniteSetsSolver.IsValid` / `IsSatisfiable` / `FindModel` |
 | Finite groups | `GroupSpec` | `GroupFinder.FindGroup` / `CountGroupsUpToIsomorphism` / … |
+
+**A note on `Verdict`.** The *bounded* procedures — modal (`ModalSolver`), LTL bounded model
+checking (`BoundedModelChecker.IsSatisfiable`), and bounded-box LIA (`LiaSolver`) — return a
+three-valued `Verdict { True, False, Unknown }` rather than `bool`. A witness found within the
+bound is decisive; otherwise the answer is `Unknown` (not a proof of the opposite). In particular
+these can *refute* validity/entailment (`Verdict.False`, via a counter-model) but cannot *prove*
+it under a fixed bound, so they return `Unknown` instead of a bound-relative `true`. This mirrors
+the first-order prover's `FolProofStatus` and the optional Z3 engine's `Unknown`.
 
 **Which SMT theory?** `SmtReasoner` is the single front door; pick the theory by the atoms in
 your formula:
@@ -666,8 +675,8 @@ The same DPLL(T) loop with a **branch-and-bound** theory decides linear arithmet
 using DeepSigma.LogicEngine.Smt;
 
 var f = LraParser.Parse("2*x = 1");
-LraSolver.IsSatisfiable(f);                       // True  — x = 1/2 over the reals
-LiaSolver.IsSatisfiable(f, new[] { "x" });        // False — no integer x
+LraSolver.IsSatisfiable(f);                       // True (bool) — x = 1/2 over the reals
+LiaSolver.IsSatisfiable(f, new[] { "x" });        // Verdict.Unknown — no integer x within the box (not a global unsat proof)
 
 var model = LiaSolver.FindModel(LraParser.Parse("3*x + 5*y = 7"), new[] { "x", "y" }, bound: 20);
 // e.g. x = 4, y = -1   (3·4 + 5·(-1) = 7)
@@ -766,7 +775,7 @@ using DeepSigma.LogicEngine.Temporal;
 using DeepSigma.LogicEngine.Transitions;
 
 // Satisfiability: is there a trace where a holds infinitely often?
-Console.WriteLine(BoundedModelChecker.IsSatisfiable(LtlParser.Parse("G F a"), maxBound: 6));  // True
+Console.WriteLine(BoundedModelChecker.IsSatisfiable(LtlParser.Parse("G F a"), maxBound: 6));  // Verdict.True (a lasso found)
 // FindWitness returns the lasso witness (and the bound it was found at):
 var result = BoundedModelChecker.FindWitness(LtlParser.Parse("G F a"), maxBound: 6);
 Console.WriteLine(result.Found);   // True (a lasso witness)
@@ -808,21 +817,23 @@ Operators: `EX EG EF AX AF AG` (prefix) and `E[φ U ψ]` / `A[φ U ψ]`. `Satisf
 
 ## Modal logic (K/T/B/S4/S5)
 
-Reason about necessity (`[]`) and possibility (`<>`) over Kripke frames. `ModalSolver` decides validity and satisfiability per modal system by constructing a bounded Kripke model (with the system's frame conditions) via SAT.
+Reason about necessity (`[]`) and possibility (`<>`) over Kripke frames. `ModalSolver` searches for a bounded Kripke model (with the system's frame conditions) via SAT, and reports a three-valued [`Verdict`](#choosing-an-entry-point): a witness found within the world bound is decisive (`True`/`False`); otherwise `Unknown` — a bounded search can refute validity (by finding a counter-model) but cannot prove it.
 
 ```csharp
+using DeepSigma.LogicEngine.Common;   // Verdict
 using DeepSigma.LogicEngine.Modal;
 
-// The T axiom []p -> p is valid in T (reflexive) but not in K.
-ModalSolver.IsValid(ModalParser.Parse("[]p -> p"), ModalSystem.K);   // False
-ModalSolver.IsValid(ModalParser.Parse("[]p -> p"), ModalSystem.T);   // True
+// The T axiom []p -> p has a counter-model in K (decisive), but in T no counter-model is found
+// up to the world bound — so validity is reported as Unknown, not a bound-relative True.
+ModalSolver.IsValid(ModalParser.Parse("[]p -> p"), ModalSystem.K);   // Verdict.False
+ModalSolver.IsValid(ModalParser.Parse("[]p -> p"), ModalSystem.T);   // Verdict.Unknown
 
-// The 5 axiom <>p -> []<>p is valid only once the frame is euclidean (S5).
-ModalSolver.IsValid(ModalParser.Parse("<>p -> []<>p"), ModalSystem.S4); // False
-ModalSolver.IsValid(ModalParser.Parse("<>p -> []<>p"), ModalSystem.S5); // True
+// The 5 axiom <>p -> []<>p: a counter-model exists in S4 (False); none is found in S5 (Unknown).
+ModalSolver.IsValid(ModalParser.Parse("<>p -> []<>p"), ModalSystem.S4); // Verdict.False
+ModalSolver.IsValid(ModalParser.Parse("<>p -> []<>p"), ModalSystem.S5); // Verdict.Unknown
 
-// Satisfiability: two distinct successors.
-ModalSolver.IsSatisfiable(ModalParser.Parse("<>p & <>!p"), ModalSystem.K); // True
+// Satisfiability: a model with two distinct successors is found.
+ModalSolver.IsSatisfiable(ModalParser.Parse("<>p & <>!p"), ModalSystem.K); // Verdict.True
 ```
 
 Systems: `K` (any frame), `T` (reflexive), `B` (reflexive+symmetric), `S4` (reflexive+transitive), `S5` (equivalence). Like BMC, the search is bounded by `maxWorlds`.
@@ -983,7 +994,7 @@ The other parsers share these connectives and add their own atoms/operators:
 
 - **Native-engine scope:** propositional, SMT (EUF, LRA, LIA, arrays, and EUF+LRA combination), first-order logic, MaxSAT, LTL, CTL, modal K/T/B/S4/S5, fuzzy (Gödel/Łukasiewicz), probabilistic (PSAT), finite-set, and finite-group. Within the native engine: arrays are non-extensional; theory combination covers EUF+LRA only (not LIA/arrays); LIA is decided within a bounded integer box; first-order proving is semi-decidable (budgeted `Unknown`); no QBF/ASP. Several of these are **lifted by the optional Z3 backend** — unbounded LIA, bit-vectors, nonlinear arithmetic, quantified SMT, and strings (see the [capability matrix](#capability-matrix-native-vs-z3)).
 - **Finite-set** cardinality reasoning and **finite-group** model finding are bounded/finite: set cardinality is decided relative to the universe size, and group search scales with an O(n⁶) associativity encoding (existence to ~order 10, isomorphism counting to ~order 8).
-- **Bounded methods** (LTL BMC, modal) are complete only up to their search bound.
+- **Bounded methods** (LTL BMC, modal, bounded-box LIA) are complete only up to their search bound, and say so: they return a three-valued `Verdict` (`Unknown` when nothing is found within the bound) rather than a `bool` that could be mistaken for a proof.
 - EUF/LRA theory solvers are **rebuild-per-check** with no incremental push/pop or eager theory propagation — fine for teaching and modest problems, not tuned for large industrial instances.
 - The solvers are **single-threaded** and allocate managed objects; they are not a drop-in replacement for MiniSAT/Z3 on competition benchmarks.
 
@@ -995,7 +1006,7 @@ These are deliberate scope boundaries, not bugs — see the roadmap.
 
 ```bash
 dotnet build                                   # warnings-as-errors, net10.0
-dotnet test                                    # 478 core tests + 89 Z3 differential tests
+dotnet test                                    # 478 core tests + 90 Z3 differential tests
 dotnet run --project samples/DeepSigma.LogicEngine.Demo
 ```
 

@@ -71,7 +71,7 @@ public class MaxSatTests
         };
         var result = new MaxSatSolver(Array.Empty<IReadOnlyList<Literal>>(), softs).Solve();
         Assert.Equal(3, result.Cost);
-        Assert.False(result.Model["a"]);
+        Assert.False(result.Model!["a"]);
     }
 
     [Fact]
@@ -86,7 +86,7 @@ public class MaxSatTests
         };
         var result = new MaxSatSolver(hard, softs).Solve();
         Assert.Equal(1, result.Cost);
-        Assert.True(result.Model["a"] || result.Model["b"]); // hard satisfied
+        Assert.True(result.Model!["a"] || result.Model["b"]); // hard satisfied
     }
 
     [Fact]
@@ -102,7 +102,7 @@ public class MaxSatTests
     }
 
     [Fact]
-    public void HardUnsatisfiable_Throws()
+    public void HardUnsatisfiable_ReturnsInfeasible()
     {
         var hard = new[]
         {
@@ -110,7 +110,9 @@ public class MaxSatTests
             Clause(Literal.Negative("a")),
         };
         var softs = new[] { new SoftClause(Clause(Literal.Positive("b")), 1) };
-        Assert.Throws<InvalidOperationException>(() => new MaxSatSolver(hard, softs).Solve());
+        var result = new MaxSatSolver(hard, softs).Solve();
+        Assert.False(result.IsSatisfiable);
+        Assert.Null(result.Model);
     }
 
     [Fact]
@@ -123,13 +125,15 @@ public class MaxSatTests
             var brute = BruteForceOptimum(hard, softs, vars);
             if (brute is null)
             {
-                Assert.Throws<InvalidOperationException>(() => new MaxSatSolver(hard, softs).Solve());
+                // No assignment satisfies the hard clauses → MaxSAT reports infeasible.
+                Assert.False(new MaxSatSolver(hard, softs).Solve().IsSatisfiable);
                 continue;
             }
             var result = new MaxSatSolver(hard, softs).Solve();
+            Assert.True(result.IsSatisfiable);
             Assert.Equal(brute.Value, result.Cost);
-            AssertHardSatisfied(hard, result.Model);
-            Assert.Equal(brute.Value, SoftCost(softs, result.Model));
+            AssertHardSatisfied(hard, result.Model!);
+            Assert.Equal(brute.Value, SoftCost(softs, result.Model!));
         }
     }
 

@@ -1,3 +1,4 @@
+using DeepSigma.LogicEngine.Common;
 using DeepSigma.LogicEngine.FiniteGroups;
 using DeepSigma.LogicEngine.FiniteSets;
 using DeepSigma.LogicEngine.Fuzzy;
@@ -18,14 +19,16 @@ public class Z3EncoderLogicsTests
 {
     private static readonly Z3SatSolver Z3 = new();
 
+    // Bounded validity: a counter-model (Verdict.False) is decisive; "no counter-model up to the
+    // bound" is Verdict.Unknown (a bounded search can refute validity but not prove it).
     [Theory]
-    [InlineData("[]p -> p", ModalSystem.K, false)]   // T axiom: not valid in K
-    [InlineData("[]p -> p", ModalSystem.T, true)]    // valid in T (reflexive)
-    [InlineData("<>p -> []<>p", ModalSystem.S5, true)]
-    public void Modal_Agrees(string text, ModalSystem system, bool expectedValid)
+    [InlineData("[]p -> p", ModalSystem.K, Verdict.False)]      // T axiom: counter-model in K
+    [InlineData("[]p -> p", ModalSystem.T, Verdict.Unknown)]    // valid in T (reflexive) — no counter-model found
+    [InlineData("<>p -> []<>p", ModalSystem.S5, Verdict.Unknown)]
+    public void Modal_Agrees(string text, ModalSystem system, Verdict expected)
     {
         var f = ModalParser.Parse(text);
-        Assert.Equal(expectedValid, ModalSolver.IsValid(f, system));
+        Assert.Equal(expected, ModalSolver.IsValid(f, system));
         Assert.Equal(ModalSolver.IsValid(f, system), ModalSolver.IsValid(f, system, Z3));
     }
 

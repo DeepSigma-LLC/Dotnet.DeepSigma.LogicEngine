@@ -288,7 +288,8 @@ internal static class PsatColumnGeneration
 
         var model = soft.Count == 0
             ? (IReadOnlyDictionary<string, bool>)new Dictionary<string, bool>()
-            : new MaxSatSolver(hard, soft).Solve().Model;
+            // The pricing problem encodes indicator ⇔ formula, which is always satisfiable, so the model is non-null.
+            : new MaxSatSolver(hard, soft).Solve().Model!;
 
         var world = new Dictionary<string, bool>(StringComparer.Ordinal);
         foreach (var atom in atoms)

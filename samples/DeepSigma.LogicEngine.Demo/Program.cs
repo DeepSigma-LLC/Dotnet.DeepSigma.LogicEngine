@@ -176,7 +176,7 @@ Section("12. MaxSAT: optimize over soft constraints");
     };
     var result = new MaxSatSolver(hard, soft).Solve();
     Console.WriteLine($"  optimum cost: {result.Cost}");
-    Console.WriteLine($"  a={result.Model["a"]}, b={result.Model["b"]}");
+    Console.WriteLine($"  a={result.Model!["a"]}, b={result.Model["b"]}");
 }
 
 Section("13. Temporal (LTL): bounded model checking");
@@ -199,9 +199,11 @@ Section("13. Temporal (LTL): bounded model checking");
 
 Section("14. Modal logic (K/T/S4/S5)");
 {
+    // Bounded validity is three-valued: False = a counter-model was found; Unknown = none up to the
+    // world bound (a bounded search refutes validity but cannot prove it).
     var t = ModalParser.Parse("[]p -> p");        // T axiom
-    Console.WriteLine($"  '{t}' valid in K?  {ModalSolver.IsValid(t, ModalSystem.K)}");
-    Console.WriteLine($"  '{t}' valid in T?  {ModalSolver.IsValid(t, ModalSystem.T)}");
+    Console.WriteLine($"  '{t}' valid in K?  {ModalSolver.IsValid(t, ModalSystem.K)}  (False = counter-model found)");
+    Console.WriteLine($"  '{t}' valid in T?  {ModalSolver.IsValid(t, ModalSystem.T)}  (Unknown = no counter-model up to the bound)");
 
     var five = ModalParser.Parse("<>p -> []<>p"); // 5 axiom
     Console.WriteLine($"  '{five}' valid in S4? {ModalSolver.IsValid(five, ModalSystem.S4)}");
@@ -277,7 +279,8 @@ Section("18. Finite group theory (SAT model finding)");
 Section("19. Linear integer arithmetic (LIA)");
 {
     var f = LraParser.Parse("2*x = 1");
-    Console.WriteLine($"  '2x = 1' satisfiable over reals? {LraSolver.IsSatisfiable(f)}; over integers? {LiaSolver.IsSatisfiable(f, new[] { "x" })}");
+    // Over integers the bounded box finds no solution → Verdict.Unknown (not a proof of unsatisfiability).
+    Console.WriteLine($"  '2x = 1' satisfiable over reals? {LraSolver.IsSatisfiable(f)}; over integers (bounded box)? {LiaSolver.IsSatisfiable(f, new[] { "x" })}");
 
     var diophantine = LraParser.Parse("3*x + 5*y = 7");
     var model = LiaSolver.FindModel(diophantine, new[] { "x", "y" }, bound: 20);

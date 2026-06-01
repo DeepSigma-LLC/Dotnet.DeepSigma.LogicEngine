@@ -28,16 +28,22 @@ public sealed record LtlBmcResult(bool Found, int Bound, LtlTrace? Trace);
 /// </summary>
 public static class BoundedModelChecker
 {
-    /// <summary>True if the LTL formula has a lasso model within bounds 0..<paramref name="maxBound"/>. (A "false" is bounded — not a proof of unsatisfiability.)</summary>
+    /// <summary>
+    /// <see cref="Verdict.True"/> if a lasso model is found within bounds 0..<paramref name="maxBound"/>
+    /// (sound); otherwise <see cref="Verdict.Unknown"/> — "not found up to the bound" is not a proof of
+    /// unsatisfiability (a larger bound might admit a witness).
+    /// </summary>
     /// <param name="formula">The LTL formula to test for satisfiability.</param>
     /// <param name="maxBound">Largest trace length k to try.</param>
-    public static bool IsSatisfiable(LtlFormula formula, int maxBound = 10) => FindWitness(formula, maxBound).Found;
+    public static Verdict IsSatisfiable(LtlFormula formula, int maxBound = 10)
+        => FindWitness(formula, maxBound).Found ? Verdict.True : Verdict.Unknown;
 
     /// <summary>As <see cref="IsSatisfiable(LtlFormula, int)"/>, but solving each bounded encoding with the supplied engine.</summary>
     /// <param name="formula">The LTL formula to test for satisfiability.</param>
     /// <param name="solver">The SAT engine to solve each bounded lasso encoding with.</param>
     /// <param name="maxBound">Largest trace length k to try.</param>
-    public static bool IsSatisfiable(LtlFormula formula, ISatSolver solver, int maxBound = 10) => FindWitness(formula, solver, maxBound).Found;
+    public static Verdict IsSatisfiable(LtlFormula formula, ISatSolver solver, int maxBound = 10)
+        => FindWitness(formula, solver, maxBound).Found ? Verdict.True : Verdict.Unknown;
 
     /// <summary>Search for a lasso trace satisfying the LTL formula, for bounds 0..<paramref name="maxBound"/>, returning the witness (and the bound it was found at) or "not found".</summary>
     /// <param name="formula">The LTL formula to satisfy.</param>

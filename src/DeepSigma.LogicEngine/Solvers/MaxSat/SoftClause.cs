@@ -13,8 +13,17 @@ public readonly record struct SoftClause(IReadOnlyList<Literal> Literals, long W
 }
 
 /// <summary>
-/// Result of a MaxSAT solve: an assignment satisfying all hard clauses, the
-/// total <see cref="Cost"/> (sum of weights of unsatisfied soft clauses, i.e.
-/// the optimum), restricted to the original problem variables.
+/// Result of a MaxSAT solve. When <see cref="IsSatisfiable"/> is true, <see cref="Model"/> is an
+/// assignment satisfying every hard clause (restricted to the original problem variables) and
+/// <see cref="Cost"/> is the optimum — the minimum total weight of unsatisfied soft clauses. When
+/// false, the hard clauses are unsatisfiable, so there is no feasible assignment: <see cref="Model"/>
+/// is null and <see cref="Cost"/> is 0.
 /// </summary>
-public sealed record MaxSatResult(IReadOnlyDictionary<string, bool> Model, long Cost);
+public sealed record MaxSatResult(bool IsSatisfiable, IReadOnlyDictionary<string, bool>? Model, long Cost)
+{
+    /// <summary>The hard clauses are unsatisfiable — there is no feasible assignment.</summary>
+    public static MaxSatResult Unsatisfiable { get; } = new(false, null, 0);
+
+    /// <summary>A feasible optimum: a model satisfying every hard clause, with the minimum soft-clause cost.</summary>
+    public static MaxSatResult Satisfiable(IReadOnlyDictionary<string, bool> model, long cost) => new(true, model, cost);
+}

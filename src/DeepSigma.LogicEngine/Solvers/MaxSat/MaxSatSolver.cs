@@ -56,7 +56,11 @@ public sealed class MaxSatSolver
         _solver = new IncrementalCdclSolver(new CnfFormula(hard), _originalVariables, options);
     }
 
-    /// <summary>Find an assignment satisfying every hard clause and minimizing the total weight of unsatisfied soft clauses.</summary>
+    /// <summary>
+    /// Find an assignment satisfying every hard clause and minimizing the total weight of
+    /// unsatisfied soft clauses. Returns <see cref="MaxSatResult.Unsatisfiable"/> when the hard
+    /// clauses cannot all be satisfied (no feasible assignment).
+    /// </summary>
     public MaxSatResult Solve()
     {
         var lowerBound = 0L;
@@ -67,13 +71,14 @@ public sealed class MaxSatSolver
             var result = _solver.SolveUnderWithCore(selectors);
             if (result.IsSatisfiable)
             {
-                return new MaxSatResult(ProjectModel(result.Model!), lowerBound);
+                return MaxSatResult.Satisfiable(ProjectModel(result.Model!), lowerBound);
             }
 
             var core = result.FailedAssumptions!;
             if (core.Count == 0)
             {
-                throw new InvalidOperationException("The hard clauses are unsatisfiable; MaxSAT has no feasible solution.");
+                // An empty core means the hard clauses alone are unsatisfiable — no feasible solution.
+                return MaxSatResult.Unsatisfiable;
             }
 
             lowerBound += RelaxCore(core);

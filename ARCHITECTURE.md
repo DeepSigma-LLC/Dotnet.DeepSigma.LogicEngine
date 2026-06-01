@@ -200,10 +200,10 @@ principled; do not "unify" it.
 
 | Family | Return shape | Why |
 |--------|--------------|-----|
-| **Decidable** (propositional, EUF, LRA, finite-set, modal-within-bound, CTL) | `bool` for `IsValid`/`IsSatisfiable`; `Model?`/state-set for witnesses | The question has a definite yes/no answer the engine can always produce. |
+| **Decidable** (propositional, EUF, LRA, finite-set) | `bool` for `IsValid`/`IsSatisfiable`; `Model?` for witnesses | The question has a definite yes/no answer the engine can always produce. |
 | **Semi-decidable** (first-order) | a status enum: `Proved` / `Saturated` / `Unknown` | FO validity is only semi-decidable; "not proved within budget" must be honestly distinguished from "disproved". |
+| **Bounded** (modal, LTL BMC, LIA box) | a three-valued `Verdict` (`True` / `False` / `Unknown`); `FindWitness`/`FindModel` for witnesses, carrying the `maxWorlds`/`bound` | Completeness holds only up to the search bound. A witness within the bound is decisive; otherwise `Unknown` — so a bounded `IsValid` can *refute* (False) but not *prove* validity, and never returns a bound-relative `True`. Mirrors the semi-decidable `FolProofStatus`. |
 | **Model-checking** (CTL, LTL) | sets of states / a counterexample trace | The natural answer is *which states satisfy φ* or *a violating run*, not a single bit. |
-| **Bounded** (LTL BMC, modal, finite-set cardinality, LIA) | results carry an explicit `bound` / `maxWorlds` / `universe` parameter | Completeness holds only up to the search bound; the bound is part of the contract, surfaced in the signature. |
 | **Optimization** (MaxSAT, PSAT) | a cost / a `(low, high)` bound pair | The answer is a number or an interval, not satisfiability. |
 
 The common nouns are shared (`Model`, `SatResult`, `Formula`), but the verbs return what

@@ -42,50 +42,69 @@ public static class ModalSolver
     /// <summary>Default bound on the number of worlds in the searched Kripke models.</summary>
     public const int DefaultMaxWorlds = 6;
 
-    /// <summary>True if the formula is satisfiable in some model of the system with up to <paramref name="maxWorlds"/> worlds.</summary>
+    /// <summary>
+    /// <see cref="Verdict.True"/> if a model of the system with up to <paramref name="maxWorlds"/>
+    /// worlds is found (sound); otherwise <see cref="Verdict.Unknown"/> — no model up to the bound
+    /// is not a proof of unsatisfiability (the finite-model bound may exceed <paramref name="maxWorlds"/>).
+    /// </summary>
     /// <param name="formula">The modal formula to test for satisfiability.</param>
     /// <param name="system">The modal system whose frame conditions the constructed model must satisfy.</param>
-    /// <param name="maxWorlds">Largest Kripke model (in worlds) to try. A satisfiable result is sound; "not satisfiable up to maxWorlds" relies on the finite-model property within this bound, not a general proof of unsatisfiability.</param>
-    public static bool IsSatisfiable(ModalFormula formula, ModalSystem system, int maxWorlds = DefaultMaxWorlds)
-        => BoundedSearch.Any(1, maxWorlds, n => Reasoner.IsSatisfiable(EncodeAt(formula, system, n)));
+    /// <param name="maxWorlds">Largest Kripke model (in worlds) to try.</param>
+    public static Verdict IsSatisfiable(ModalFormula formula, ModalSystem system, int maxWorlds = DefaultMaxWorlds)
+        => FoundModel(formula, system, maxWorlds) ? Verdict.True : Verdict.Unknown;
 
-    /// <summary>True if the formula is valid in the system (its negation has no model up to <paramref name="maxWorlds"/>).</summary>
+    /// <summary>
+    /// <see cref="Verdict.False"/> if a counter-model is found within <paramref name="maxWorlds"/>
+    /// worlds (the formula is provably not valid); otherwise <see cref="Verdict.Unknown"/> — a
+    /// bounded search cannot prove validity, so it never returns <see cref="Verdict.True"/>.
+    /// </summary>
     /// <param name="formula">The modal formula to test for validity.</param>
     /// <param name="system">The modal system whose frame conditions apply.</param>
-    /// <param name="maxWorlds">Largest Kripke model (in worlds) searched for a counter-model; validity is relative to this bound.</param>
-    public static bool IsValid(ModalFormula formula, ModalSystem system, int maxWorlds = DefaultMaxWorlds)
-        => !IsSatisfiable(new ModalNot(formula), system, maxWorlds);
+    /// <param name="maxWorlds">Largest Kripke model (in worlds) searched for a counter-model.</param>
+    public static Verdict IsValid(ModalFormula formula, ModalSystem system, int maxWorlds = DefaultMaxWorlds)
+        => FoundModel(new ModalNot(formula), system, maxWorlds) ? Verdict.False : Verdict.Unknown;
 
-    /// <summary>True if the formula has no model of the system up to <paramref name="maxWorlds"/> worlds (relative to the bound, like <see cref="IsSatisfiable(ModalFormula, ModalSystem, int)"/>).</summary>
+    /// <summary>
+    /// <see cref="Verdict.False"/> if a model is found within <paramref name="maxWorlds"/> worlds;
+    /// otherwise <see cref="Verdict.Unknown"/> (no model up to the bound is not a proof of
+    /// unsatisfiability).
+    /// </summary>
     /// <param name="formula">The modal formula to test.</param>
     /// <param name="system">The modal system whose frame conditions apply.</param>
-    /// <param name="maxWorlds">Largest Kripke model (in worlds) searched; the result is relative to this bound.</param>
-    public static bool IsUnsatisfiable(ModalFormula formula, ModalSystem system, int maxWorlds = DefaultMaxWorlds)
-        => !IsSatisfiable(formula, system, maxWorlds);
+    /// <param name="maxWorlds">Largest Kripke model (in worlds) searched.</param>
+    public static Verdict IsUnsatisfiable(ModalFormula formula, ModalSystem system, int maxWorlds = DefaultMaxWorlds)
+        => FoundModel(formula, system, maxWorlds) ? Verdict.False : Verdict.Unknown;
 
     /// <summary>As <see cref="IsSatisfiable(ModalFormula, ModalSystem, int)"/>, but solving the bounded SAT encoding with the supplied engine (e.g. a Z3-backed <see cref="ISatSolver"/>).</summary>
     /// <param name="formula">The modal formula to test for satisfiability.</param>
     /// <param name="system">The modal system whose frame conditions the constructed model must satisfy.</param>
     /// <param name="solver">The SAT engine to solve each bounded encoding with.</param>
     /// <param name="maxWorlds">Largest Kripke model (in worlds) to try; the bound semantics are unchanged.</param>
-    public static bool IsSatisfiable(ModalFormula formula, ModalSystem system, ISatSolver solver, int maxWorlds = DefaultMaxWorlds)
-        => BoundedSearch.Any(1, maxWorlds, n => Reasoner.IsSatisfiable(EncodeAt(formula, system, n), solver));
+    public static Verdict IsSatisfiable(ModalFormula formula, ModalSystem system, ISatSolver solver, int maxWorlds = DefaultMaxWorlds)
+        => FoundModel(formula, system, solver, maxWorlds) ? Verdict.True : Verdict.Unknown;
 
     /// <summary>As <see cref="IsValid(ModalFormula, ModalSystem, int)"/>, but solving with the supplied engine.</summary>
     /// <param name="formula">The modal formula to test for validity.</param>
     /// <param name="system">The modal system whose frame conditions apply.</param>
     /// <param name="solver">The SAT engine to solve each bounded encoding with.</param>
     /// <param name="maxWorlds">Largest Kripke model (in worlds) searched for a counter-model.</param>
-    public static bool IsValid(ModalFormula formula, ModalSystem system, ISatSolver solver, int maxWorlds = DefaultMaxWorlds)
-        => !IsSatisfiable(new ModalNot(formula), system, solver, maxWorlds);
+    public static Verdict IsValid(ModalFormula formula, ModalSystem system, ISatSolver solver, int maxWorlds = DefaultMaxWorlds)
+        => FoundModel(new ModalNot(formula), system, solver, maxWorlds) ? Verdict.False : Verdict.Unknown;
 
     /// <summary>As <see cref="IsUnsatisfiable(ModalFormula, ModalSystem, int)"/>, but solving with the supplied engine.</summary>
     /// <param name="formula">The modal formula to test.</param>
     /// <param name="system">The modal system whose frame conditions apply.</param>
     /// <param name="solver">The SAT engine to solve each bounded encoding with.</param>
     /// <param name="maxWorlds">Largest Kripke model (in worlds) searched.</param>
-    public static bool IsUnsatisfiable(ModalFormula formula, ModalSystem system, ISatSolver solver, int maxWorlds = DefaultMaxWorlds)
-        => !IsSatisfiable(formula, system, solver, maxWorlds);
+    public static Verdict IsUnsatisfiable(ModalFormula formula, ModalSystem system, ISatSolver solver, int maxWorlds = DefaultMaxWorlds)
+        => FoundModel(formula, system, solver, maxWorlds) ? Verdict.False : Verdict.Unknown;
+
+    /// <summary>True if a frame-valid Kripke model of the formula with up to <paramref name="maxWorlds"/> worlds exists.</summary>
+    private static bool FoundModel(ModalFormula formula, ModalSystem system, int maxWorlds)
+        => BoundedSearch.Any(1, maxWorlds, n => Reasoner.IsSatisfiable(EncodeAt(formula, system, n)));
+
+    private static bool FoundModel(ModalFormula formula, ModalSystem system, ISatSolver solver, int maxWorlds)
+        => BoundedSearch.Any(1, maxWorlds, n => Reasoner.IsSatisfiable(EncodeAt(formula, system, n), solver));
 
     /// <summary>Encode "∃ Kripke model on worlds 0..n−1 (frame-valid) with the formula true at world 0".</summary>
     internal static Formula EncodeAt(ModalFormula formula, ModalSystem system, int n)

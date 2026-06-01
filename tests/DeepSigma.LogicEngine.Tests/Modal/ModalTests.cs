@@ -1,3 +1,4 @@
+using DeepSigma.LogicEngine.Common;
 using DeepSigma.LogicEngine.Modal;
 using DeepSigma.LogicEngine.Reasoning;
 using Xunit;
@@ -16,7 +17,8 @@ public class ModalParserTests
 
 public class ModalSolverTests
 {
-    // The K axiom is valid in every system.
+    // The K axiom is valid in every system: no counter-model is found, so the bounded prover
+    // reports Unknown (it cannot prove validity under the world bound, only refute it).
     [Theory]
     [InlineData(ModalSystem.K)]
     [InlineData(ModalSystem.T)]
@@ -24,50 +26,54 @@ public class ModalSolverTests
     [InlineData(ModalSystem.S5)]
     public void KAxiom_ValidEverywhere(ModalSystem system)
     {
-        Assert.True(ModalSolver.IsValid(ModalParser.Parse("[](p -> q) -> ([]p -> []q)"), system));
+        Assert.Equal(Verdict.Unknown, ModalSolver.IsValid(ModalParser.Parse("[](p -> q) -> ([]p -> []q)"), system));
     }
 
+    // The discriminating behaviour: a counter-model (Verdict.False) appears exactly in the systems
+    // where the axiom is not valid; in the systems where it holds, no counter-model is found (Unknown).
     [Fact]
     public void TAxiom_ValidInTButNotK()
     {
         var t = ModalParser.Parse("[]p -> p");
-        Assert.False(ModalSolver.IsValid(t, ModalSystem.K));
-        Assert.True(ModalSolver.IsValid(t, ModalSystem.T));
-        Assert.True(ModalSolver.IsValid(t, ModalSystem.S4));
-        Assert.True(ModalSolver.IsValid(t, ModalSystem.S5));
+        Assert.Equal(Verdict.False, ModalSolver.IsValid(t, ModalSystem.K));
+        Assert.Equal(Verdict.Unknown, ModalSolver.IsValid(t, ModalSystem.T));
+        Assert.Equal(Verdict.Unknown, ModalSolver.IsValid(t, ModalSystem.S4));
+        Assert.Equal(Verdict.Unknown, ModalSolver.IsValid(t, ModalSystem.S5));
     }
 
     [Fact]
     public void FourAxiom_ValidInS4ButNotT()
     {
         var four = ModalParser.Parse("[]p -> [][]p");
-        Assert.False(ModalSolver.IsValid(four, ModalSystem.T));
-        Assert.True(ModalSolver.IsValid(four, ModalSystem.S4));
-        Assert.True(ModalSolver.IsValid(four, ModalSystem.S5));
+        Assert.Equal(Verdict.False, ModalSolver.IsValid(four, ModalSystem.T));
+        Assert.Equal(Verdict.Unknown, ModalSolver.IsValid(four, ModalSystem.S4));
+        Assert.Equal(Verdict.Unknown, ModalSolver.IsValid(four, ModalSystem.S5));
     }
 
     [Fact]
     public void FiveAxiom_ValidInS5ButNotS4()
     {
         var five = ModalParser.Parse("<>p -> []<>p");
-        Assert.False(ModalSolver.IsValid(five, ModalSystem.S4));
-        Assert.True(ModalSolver.IsValid(five, ModalSystem.S5));
+        Assert.Equal(Verdict.False, ModalSolver.IsValid(five, ModalSystem.S4));
+        Assert.Equal(Verdict.Unknown, ModalSolver.IsValid(five, ModalSystem.S5));
     }
 
     [Fact]
     public void BAxiom_ValidInBAndS5()
     {
         var b = ModalParser.Parse("p -> []<>p");
-        Assert.False(ModalSolver.IsValid(b, ModalSystem.K));
-        Assert.True(ModalSolver.IsValid(b, ModalSystem.B));
-        Assert.True(ModalSolver.IsValid(b, ModalSystem.S5));
+        Assert.Equal(Verdict.False, ModalSolver.IsValid(b, ModalSystem.K));
+        Assert.Equal(Verdict.Unknown, ModalSolver.IsValid(b, ModalSystem.B));
+        Assert.Equal(Verdict.Unknown, ModalSolver.IsValid(b, ModalSystem.S5));
     }
 
+    // Satisfiable formulas yield a model (Verdict.True); unsatisfiable ones are not found within the
+    // world bound, so the bounded prover reports Unknown rather than a proof of unsatisfiability.
     [Theory]
-    [InlineData("<>p & <>!p", true)]   // two distinct successors
-    [InlineData("[]p & <>!p", false)]  // all successors p, yet a successor !p
-    [InlineData("[]false", true)]      // a dead end (no successors) in K
-    public void Satisfiability_K(string input, bool expected)
+    [InlineData("<>p & <>!p", Verdict.True)]      // two distinct successors
+    [InlineData("[]p & <>!p", Verdict.Unknown)]   // contradictory: no model found within the bound
+    [InlineData("[]false", Verdict.True)]         // a dead end (no successors) in K
+    public void Satisfiability_K(string input, Verdict expected)
     {
         Assert.Equal(expected, ModalSolver.IsSatisfiable(ModalParser.Parse(input), ModalSystem.K));
     }
