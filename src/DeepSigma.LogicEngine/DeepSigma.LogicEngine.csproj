@@ -1,4 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <!-- Enforce that every public member is documented (CS1591 becomes an error under the repo's
+         warnings-as-errors), matching the optional Z3 project. -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
   <ItemGroup>
     <!-- Exact-rational arithmetic + simplex for the LRA theory. Cross-repo project
          reference for now; switch to a versioned PackageReference at release. -->

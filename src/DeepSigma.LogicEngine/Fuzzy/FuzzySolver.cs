@@ -27,4 +27,11 @@ public static class FuzzySolver
     /// </summary>
     public static bool IsSatisfiable(FuzzyFormula formula, FuzzyLogic logic, Rational? threshold = null)
         => LraSolver.IsSatisfiable(FuzzyEncoder.SatisfiabilityQuery(formula, logic, threshold));
+
+    /// <summary>
+    /// True if no assignment reaches <paramref name="threshold"/> (default 1) — the negation of
+    /// <see cref="IsSatisfiable"/>.
+    /// </summary>
+    public static bool IsUnsatisfiable(FuzzyFormula formula, FuzzyLogic logic, Rational? threshold = null)
+        => !IsSatisfiable(formula, logic, threshold);
 }

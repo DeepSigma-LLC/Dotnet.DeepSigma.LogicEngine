@@ -13,11 +13,13 @@ public static class ModalParser
     private enum Kind { Id, True, False, Not, And, Or, Implies, Iff, Box, Diamond, LParen, RParen, End }
     private readonly record struct Token(Kind Kind, string Text, int Position);
 
+    /// <summary>Parse a modal formula, throwing on a syntax error.</summary>
     public static ModalFormula Parse(string source)
     {
         return new State(Tokenize(source)).ParseComplete();
     }
 
+    /// <summary>Try to parse a modal formula; returns false on a syntax error.</summary>
     public static bool TryParse(string source, out ModalFormula formula)
     {
         try { formula = Parse(source); return true; }

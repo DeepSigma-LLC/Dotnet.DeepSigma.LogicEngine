@@ -70,7 +70,7 @@ From the bottom up:
                                    ▲
 ┌───────────────────────────────────────────────────────────────────────────┐
 │ Theory layer (SMT)                                                          │
-│   Smt/   ITheory + lazy DPLL(T) loop; EUF (congruence closure), LRA          │
+│   SmtReasoner/   ITheory + lazy DPLL(T) loop; EUF (congruence closure), LRA          │
 │          (simplex adapter), LIA (branch-and-bound), arrays (read-over-write  │
 │          → EUF), CombinedTheory (Nelson–Oppen EUF+LRA)                        │
 └───────────────────────────────────────────────────────────────────────────┘
@@ -93,7 +93,7 @@ Foundational, shared by everyone:
   front-end **infrastructure** described below.
 - **`Common/`** — small cross-cutting helpers (`BalancedFold`, `StructuralEquality`).
 
-**Convention: folder = namespace.** Everything under `src/DeepSigma.LogicEngine/Smt/`
+**Convention: folder = namespace.** Everything under `src/DeepSigma.LogicEngine/SmtReasoner/`
 is in `DeepSigma.LogicEngine.Smt`, and so on. Keep new files in the folder matching
 their namespace.
 
@@ -147,7 +147,7 @@ enum, and all atom/term grammar.
   operator dispatch (which has per-parser ordering, e.g. LRA matches `<=` before `<->`), so
   accepted syntax and error positions are unchanged.
 
-Two parser styles coexist: `Peek()`-method parsers (`Parser`, `Modal`, `Smt`, `Ltl`,
+Two parser styles coexist: `Peek()`-method parsers (`Parser`, `Modal`, `SmtReasoner`, `Ltl`,
 `Lra`) derive from `TokenReader`; `Peek`-property parsers (`Fol`, `Ctl`) keep their own
 cursor plumbing and adopt **only** `ConnectiveChain`. Both are fine — pick whichever fits
 the parser you are touching, and don't force-migrate one style to the other.
@@ -160,7 +160,7 @@ Two `internal` helpers; each printer keeps its own per-node dispatch and its own
 - **`PrecedencePrinter`** (minimal parentheses) — `WriteWithParens(sb, prec, outerPrec, body)`
   and `WriteBinary(sb, outerPrec, prec, left, op, right, rightAssoc, write)`. Used by the
   two precedence-aware printers: `Printing/Printer.cs` (propositional) and
-  `Smt/SmtPrinter.cs`. `SmtPrinter` keeps a bespoke `WriteNot` (it wraps an equality
+  `SmtReasoner/SmtPrinter.cs`. `SmtPrinter` keeps a bespoke `WriteNot` (it wraps an equality
   operand in extra parens for readability) — a genuine, intentional difference.
 - **`ParenPrinter`** (fully parenthesized) — `WriteBinary(sb, left, op, right, write)`
   emits `(l op r)`, and `WriteOperand(sb, operand, isAtomic, write)` parenthesizes a
@@ -181,13 +181,13 @@ Two `internal` helpers; each printer keeps its own per-node dispatch and its own
   `(symbol, args)`-shaped AST nodes. Used by `Term`, `PredicateAtom`, `FolFunc`,
   `FolPredicate` instead of hand-rolled loops.
 
-In the SMT layer, **`Smt/TheoryAtoms`** holds the shared conversions from abstracted
+In the SMT layer, **`SmtReasoner/TheoryAtoms`** holds the shared conversions from abstracted
 `SmtFormula` atoms to the representations the theory solvers consume: `ToEufLiteral` (used
 by `EufTheory` and the EUF half of `CombinedTheory`) and `LinearTerms`/`Polarized` (used by
 `LraTheory`, `LiaTheory`, and the LRA half of `CombinedTheory`). Each theory keeps its own
 "wrong kind of atom" guard text and its own solver-specific add call. Relatedly, all four
 theories now report **1-minimal conflict cores**: `LiaTheory`/`CombinedTheory` already wrapped
-their raw check in `Smt/ConflictMinimizer`, and `EufTheory`/`LraTheory` now do the same, so
+their raw check in `SmtReasoner/ConflictMinimizer`, and `EufTheory`/`LraTheory` now do the same, so
 the DPLL(T) loop learns equally strong blocking clauses across theories.
 
 ---
@@ -220,9 +220,9 @@ above without collapsing the principled divergence:
   parser's `try { Parse } catch (FormatException)`), so `XxxFormula.Parse`/`TryParse` is a
   uniform construction entry. LRA still parses via `LraParser.Parse` because it and EUF
   produce the *same* `SmtFormula` from different surface syntaxes.
-- `Smt/SmtSolver.cs` is a single front door for the quantifier-free SMT theories: an
+- `SmtReasoner/SmtReasoner.cs` is a single front door for the quantifier-free SMT theories: an
   `SmtTheory` enum (`Euf`/`Lra`/`Combined`/`Arrays`) selects which dedicated facade
-  `SmtSolver.{IsSatisfiable,IsValid,Entails,Solve}(f, theory)` dispatches to. It adds no new
+  `SmtReasoner.{IsSatisfiable,IsValid,Entails,Solve}(f, theory)` dispatches to. It adds no new
   semantics (the `Arrays` case reuses `ArraySolver.WithArrayAxioms` → EUF). The dedicated
   facades stay public for richer outputs (`ConflictCore`); LIA stays on `LiaSolver` because
   its integer-variable set and search bound don't fit the uniform signature.
@@ -249,7 +249,7 @@ Say you want to add logic *Foo*. The mechanical steps:
    `ParenPrinter` (fully parenthesized) or `PrecedencePrinter` (minimal parens) with an
    `IsAtomic` predicate. Wire it into `FooFormula.ToString()`.
 5. **Solver facade** — `FooSolver.cs`: implement **encode → solve → decode**. Reuse the
-   core (CDCL via `Reasoner`/`ISatSolver`, DPLL(T) via the `Smt` theory loop, or the
+   core (CDCL via `Reasoner`/`ISatSolver`, DPLL(T) via the `SmtReasoner` theory loop, or the
    exact LP/simplex in `DeepSigma.Mathematics`) rather than writing new search.
 6. **Tests** — in `tests/DeepSigma.LogicEngine.Tests/`:
    - **Known-theorem tests**: a handful of textbook validities/satisfiabilities with
@@ -284,7 +284,7 @@ solve, translate the model back — not an `ITheory` plugged into the native DPL
 - **Two engines, one front-end.** Native = pure-managed, exact, bounded; Z3 = complete (e.g.
   unbounded integers), fast at scale, but a **native dependency** (`Microsoft.Z3` bundles `libz3`).
   The core project takes no dependency on Z3; consumers opt in by referencing the Z3 project.
-- **Parallel facades, not a hidden swap.** `Z3Reasoner` (propositional), `Z3SmtSolver` (EUF/LRA/LIA/
+- **Parallel facades, not a hidden swap.** `Z3Reasoner` (propositional), `Z3SmtReasoner` (EUF/LRA/LIA/
   arrays/combined; `Z3SmtTheory` adds unbounded `Lia`), and `Z3MaxSatSolver` mirror the native APIs and
   return a tri-valued `Z3Result` (`Satisfiable`/`Unsatisfiable`/**`Unknown`** — Z3 is honest about
   not deciding quantified/nonlinear queries, mirroring `FolProofStatus`).
@@ -333,7 +333,7 @@ simplex, LP optimizer, and group algebra this library depends on.
 - New to the codebase? Read `Formulas/Formula.cs`, then `Parsing/Parser.cs` +
   `Printing/Printer.cs` (the simplest complete front-end), then `Solvers/Cdcl/` for the
   core engine.
-- Adding a theory? Read `Smt/ITheory.cs` (or the DPLL(T) loop) and an existing theory like
-  `Smt/LraTheory.cs`.
+- Adding a theory? Read `SmtReasoner/ITheory.cs` (or the DPLL(T) loop) and an existing theory like
+  `SmtReasoner/LraTheory.cs`.
 - Adding a logic? Copy the shape of a small front-end — `Modal/` or `Ctl/` are good
   templates — and follow the steps above.

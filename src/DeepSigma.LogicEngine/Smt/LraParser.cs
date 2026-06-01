@@ -16,11 +16,13 @@ namespace DeepSigma.LogicEngine.Smt;
 /// </summary>
 public static class LraParser
 {
+    /// <summary>Parse a linear-arithmetic formula, throwing on a syntax error.</summary>
     public static SmtFormula Parse(string source)
     {
         return new State(Tokenize(source)).ParseComplete();
     }
 
+    /// <summary>Try to parse a linear-arithmetic formula; returns false on a syntax error.</summary>
     public static bool TryParse(string source, out SmtFormula formula)
     {
         try

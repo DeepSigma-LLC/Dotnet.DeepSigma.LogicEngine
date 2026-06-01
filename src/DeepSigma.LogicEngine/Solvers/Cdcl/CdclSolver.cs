@@ -15,11 +15,13 @@ public sealed class CdclSolver : ISatSolver
 {
     private readonly SolverOptions _options;
 
+    /// <summary>Create a solver, optionally overriding the default tuning options.</summary>
     public CdclSolver(SolverOptions? options = null) => _options = options ?? SolverOptions.Default;
 
     /// <summary>Statistics from the most recent solve.</summary>
     public SolverStatistics Statistics { get; private set; } = new();
 
+    /// <summary>Solve an arbitrary formula by preparing it to CNF, returning a model over its original variables.</summary>
     public SatResult Solve(Formula formula)
     {
         var prepared = CnfPreparer.Prepare(formula);
@@ -29,6 +31,7 @@ public sealed class CdclSolver : ISatSolver
             : result;
     }
 
+    /// <summary>Solve a CNF formula, returning satisfiability and (if satisfiable) a model.</summary>
     public SatResult Solve(CnfFormula formula)
     {
         var (map, clauses) = VariableMap.Encode(formula);

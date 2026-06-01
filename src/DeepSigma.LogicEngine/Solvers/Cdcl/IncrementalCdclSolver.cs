@@ -21,6 +21,7 @@ public sealed class IncrementalCdclSolver
     private readonly VariableMap _map;
     private readonly CdclEngine _engine;
 
+    /// <summary>Construct from an initial CNF formula, fixing its variables as the universe.</summary>
     public IncrementalCdclSolver(CnfFormula formula, SolverOptions? options = null)
         : this(formula, Array.Empty<string>(), options)
     {
@@ -46,6 +47,7 @@ public sealed class IncrementalCdclSolver
         }
     }
 
+    /// <summary>Cumulative statistics across all solves on this instance.</summary>
     public SolverStatistics Statistics => _engine.Statistics;
 
     /// <summary>
@@ -71,6 +73,7 @@ public sealed class IncrementalCdclSolver
         System.Diagnostics.Debug.Assert(mapId == engineId, "VariableMap and engine variable ids must stay in lockstep.");
     }
 
+    /// <summary>Solve the current formula with no assumptions.</summary>
     public SatResult Solve() => SolveUnder(Array.Empty<Literal>());
 
     /// <summary>

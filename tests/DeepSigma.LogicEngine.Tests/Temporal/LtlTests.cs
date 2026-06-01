@@ -39,7 +39,7 @@ public class BoundedModelCheckerTests
     [InlineData("G (a -> X a)")]
     public void Satisfiable_FormulasFound(string input)
     {
-        var result = BoundedModelChecker.CheckSatisfiable(LtlParser.Parse(input), maxBound: 6);
+        var result = BoundedModelChecker.FindWitness(LtlParser.Parse(input), maxBound: 6);
         Assert.True(result.Found, $"expected a lasso for {input}");
         Assert.NotNull(result.Trace);
     }
@@ -50,7 +50,7 @@ public class BoundedModelCheckerTests
     [InlineData("(G a) & (F !a)")]
     public void Unsatisfiable_FormulasNotFound(string input)
     {
-        var result = BoundedModelChecker.CheckSatisfiable(LtlParser.Parse(input), maxBound: 6);
+        var result = BoundedModelChecker.FindWitness(LtlParser.Parse(input), maxBound: 6);
         Assert.False(result.Found);
     }
 

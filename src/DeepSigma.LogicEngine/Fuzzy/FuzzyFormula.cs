@@ -21,23 +21,38 @@ namespace DeepSigma.LogicEngine.Fuzzy;
 /// </summary>
 public abstract record FuzzyFormula
 {
+    /// <summary>Creates a fuzzy truth-value constant in [0, 1].</summary>
     public static FuzzyFormula Constant(Rational value) => new FuzzyConst(value);
+    /// <summary>Creates a fuzzy variable with the given name.</summary>
     public static FuzzyFormula Var(string name) => new FuzzyVar(name);
+    /// <summary>Creates the fuzzy negation of a formula.</summary>
     public static FuzzyFormula Not(FuzzyFormula f) => new FuzzyNot(f);
+    /// <summary>Creates the fuzzy conjunction (AND) of two formulas.</summary>
     public static FuzzyFormula And(FuzzyFormula a, FuzzyFormula b) => new FuzzyAnd(a, b);
+    /// <summary>Creates the fuzzy disjunction (OR) of two formulas.</summary>
     public static FuzzyFormula Or(FuzzyFormula a, FuzzyFormula b) => new FuzzyOr(a, b);
+    /// <summary>Creates the fuzzy implication of two formulas.</summary>
     public static FuzzyFormula Implies(FuzzyFormula a, FuzzyFormula b) => new FuzzyImplies(a, b);
 
+    /// <summary>Creates the fuzzy negation of a formula.</summary>
     public static FuzzyFormula operator !(FuzzyFormula f) => new FuzzyNot(f);
+    /// <summary>Creates the fuzzy conjunction (AND) of two formulas.</summary>
     public static FuzzyFormula operator &(FuzzyFormula a, FuzzyFormula b) => new FuzzyAnd(a, b);
+    /// <summary>Creates the fuzzy disjunction (OR) of two formulas.</summary>
     public static FuzzyFormula operator |(FuzzyFormula a, FuzzyFormula b) => new FuzzyOr(a, b);
 }
 
+/// <summary>A fuzzy truth-value constant in [0, 1].</summary>
 public sealed record FuzzyConst(Rational Value) : FuzzyFormula;
+/// <summary>A fuzzy variable referenced by name.</summary>
 public sealed record FuzzyVar(string Name) : FuzzyFormula;
+/// <summary>The fuzzy negation (NOT) of a sub-formula.</summary>
 public sealed record FuzzyNot(FuzzyFormula Operand) : FuzzyFormula;
+/// <summary>The fuzzy conjunction (AND) of two sub-formulas.</summary>
 public sealed record FuzzyAnd(FuzzyFormula Left, FuzzyFormula Right) : FuzzyFormula;
+/// <summary>The fuzzy disjunction (OR) of two sub-formulas.</summary>
 public sealed record FuzzyOr(FuzzyFormula Left, FuzzyFormula Right) : FuzzyFormula;
+/// <summary>The fuzzy implication of two sub-formulas.</summary>
 public sealed record FuzzyImplies(FuzzyFormula Left, FuzzyFormula Right) : FuzzyFormula;
 
 /// <summary>The t-norm family giving the connectives their semantics.</summary>

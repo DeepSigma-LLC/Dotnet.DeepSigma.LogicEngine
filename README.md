@@ -109,7 +109,7 @@ src/DeepSigma.LogicEngine/        the library
   Reasoning/       Reasoner, WeightedModelCounter, ResolutionRefuter, Horn chaining
   Encoding/        Cardinality, SequentialCounter
   Transitions/     TransitionSystem, Unroller (BMC substrate)
-  Smt/             Term, SmtFormula, EUF/LRA/LIA/array + combined theories, EufSolver, LraSolver, LiaSolver, ArraySolver, CombinedSolver, parsers
+  SmtReasoner/             Term, SmtFormula, EUF/LRA/LIA/array + combined theories, EufSolver, LraSolver, LiaSolver, ArraySolver, CombinedSolver, parsers
   FirstOrder/      FolTerm/FolFormula, parser, unification, clausifier, FirstOrderProver
   Temporal/        LtlFormula, LtlParser, BoundedModelChecker
   Ctl/             CtlFormula, CtlParser, KripkeStructure, CtlModelChecker
@@ -118,7 +118,7 @@ src/DeepSigma.LogicEngine/        the library
   Probabilistic/   ProbabilityConstraint, PsatSolver (coherence + bounds; column generation)
   FiniteSets/      SetExpr/ElementExpr/SetFormula, parser/printer, FiniteSetsSolver
   FiniteGroups/    GroupSpec, GroupFinder (SAT existence/find/enumerate/count-up-to-iso)
-src/DeepSigma.LogicEngine.Z3/     OPTIONAL Z3-backed engine (Z3Reasoner, Z3SmtSolver, Z3MaxSatSolver) — native libz3
+src/DeepSigma.LogicEngine.Z3/     OPTIONAL Z3-backed engine (Z3Reasoner, Z3SmtReasoner, Z3MaxSatSolver) — native libz3
 tests/DeepSigma.LogicEngine.Tests/    xUnit v3 test suite (+ DIMACS benchmarks)
 tests/DeepSigma.LogicEngine.Z3.Tests/ Z3 vs native differential tests (isolates the libz3 dependency)
 samples/DeepSigma.LogicEngine.Demo/    guided feature walkthrough
@@ -147,7 +147,7 @@ using DeepSigma.LogicEngine.Probabilistic; // ProbabilityConstraint, PsatSolver
 using DeepSigma.LogicEngine.FiniteSets;   // SetFormula, SetExpr, ElementExpr, FiniteSetsSolver
 using DeepSigma.LogicEngine.FiniteGroups; // GroupFinder, GroupSpec
 using DeepSigma.Mathematics.Algebra;      // GroupTable, GroupTables
-using DeepSigma.LogicEngine.Z3;           // OPTIONAL: Z3Reasoner, Z3SmtSolver, Z3SmtTheory, Z3MaxSatSolver
+using DeepSigma.LogicEngine.Z3;           // OPTIONAL: Z3Reasoner, Z3SmtReasoner, Z3SmtTheory, Z3MaxSatSolver
 ```
 
 ---
@@ -158,7 +158,7 @@ using DeepSigma.LogicEngine.Z3;           // OPTIONAL: Z3Reasoner, Z3SmtSolver, 
 |---------|---------|--------------------|
 | `DeepSigma.Mathematics` | Exact-rational arithmetic, simplex, LP optimizer, group algebra. The one dependency of the core engine. | Transitively — you don't reference it directly unless you use its types (`Rational`, `GroupTable`). |
 | **`DeepSigma.LogicEngine`** | The **pure-managed engine** — every logic, no native dependencies. This is the default. | **Almost always. Start here.** |
-| `DeepSigma.LogicEngine.Z3` | **Optional** Z3-backed engine (`Z3Reasoner`, `Z3SmtSolver`, `Z3MaxSatSolver`). Brings the native `libz3` binaries. | Add this *only* when you need Z3's completeness (e.g. unbounded integers), large-scale speed, or its Z3-only theories: bit-vectors, nonlinear arithmetic, quantifiers, and strings. |
+| `DeepSigma.LogicEngine.Z3` | **Optional** Z3-backed engine (`Z3Reasoner`, `Z3SmtReasoner`, `Z3MaxSatSolver`). Brings the native `libz3` binaries. | Add this *only* when you need Z3's completeness (e.g. unbounded integers), large-scale speed, or its Z3-only theories: bit-vectors, nonlinear arithmetic, quantifiers, and strings. |
 
 Most consumers reference only `DeepSigma.LogicEngine`. The native engine is pure managed and
 exact; reach for `…​.Z3` when you specifically want what Z3 adds.
@@ -185,11 +185,11 @@ MaxSAT. It is MIT-licensed.
 | Capability | Native engine | Z3 engine | Notes |
 |------------|:------:|:--:|-------|
 | Propositional SAT / validity / entailment | ✅ | ✅ (`Z3Reasoner`) | |
-| SMT: EUF, LRA, arrays, combined | ✅ | ✅ (`Z3SmtSolver`) | Z3 is faster at scale |
+| SMT: EUF, LRA, arrays, combined | ✅ | ✅ (`Z3SmtReasoner`) | Z3 is faster at scale |
 | SMT: linear **integer** arithmetic (LIA) | ✅ bounded box | ✅ **unbounded** | Z3 is complete |
 | MaxSAT | ✅ (`MaxSatSolver`) | ✅ (`Z3MaxSatSolver`) | |
 | Modal / LTL / finite-sets / finite-groups | ✅ | ✅ (`ISatSolver` seam) | pass a `Z3SatSolver` to the facade; Z3 backs the SAT |
-| Fuzzy (Gödel / Łukasiewicz) | ✅ | ✅ (`FuzzyEncoder` → `Z3SmtSolver`) | the reduction to LRA is public |
+| Fuzzy (Gödel / Łukasiewicz) | ✅ | ✅ (`FuzzyEncoder` → `Z3SmtReasoner`) | the reduction to LRA is public |
 | Bit-vectors (QF_BV) | ❌ | ✅ (`Z3SortedSolver` + `SortedExpr`) | fixed-width; arithmetic, bitwise, shifts, concat/extract, signed+unsigned compare |
 | Nonlinear arithmetic (NIA / NRA) | ❌ | ✅ (`Z3SortedSolver` + `SortedExpr`) | Int/Real sorts with `var·var`; the native engine is linear-only |
 | Quantifiers (∀ / ∃) | ❌ | ✅ (`SortedExpr.ForAll`/`Exists`) | full SMT; may return `Unknown` for hard fragments |
@@ -203,7 +203,7 @@ using DeepSigma.LogicEngine.Smt;
 using DeepSigma.LogicEngine.Z3;
 
 // Complete, unbounded integers — the native LIA box would miss this.
-var r = Z3SmtSolver.Solve(LraParser.Parse("x = 100000"), Z3SmtTheory.Lia, new[] { "x" });
+var r = Z3SmtReasoner.Solve(LraParser.Parse("x = 100000"), Z3SmtTheory.Lia, new[] { "x" });
 Console.WriteLine($"{r.Status}, x = {r.Model!["x"]}");   // Satisfiable, x = 100000
 
 // Encoder logics ride Z3 through the existing ISatSolver seam — just pass a Z3SatSolver.
@@ -263,10 +263,10 @@ formula type exposes both `Parse` and `TryParse`.
 | Logic | Construct | Decide / solve with |
 |-------|-----------|---------------------|
 | Propositional | `Formula.Parse` · `Formula.Var/All/Any` · `& \| !` | `Reasoner.IsValid` / `IsSatisfiable` / `Entails` / `FindModel` / `CountModels` |
-| SMT (EUF, LRA, arrays, EUF+LRA) | `SmtFormula.Parse` (equality/UF) · `LraParser.Parse` (arithmetic) · factories | `SmtSolver.IsValid` / `IsSatisfiable` / `Entails` / `Solve` `(f, SmtTheory.X)` |
+| SMT (EUF, LRA, arrays, EUF+LRA) | `SmtFormula.Parse` (equality/UF) · `LraParser.Parse` (arithmetic) · factories | `SmtReasoner.IsValid` / `IsSatisfiable` / `Entails` / `Solve` `(f, SmtTheory.X)` |
 | SMT — linear **integer** arithmetic (LIA) | `LraParser.Parse` | `LiaSolver.*(f, integerVariables, bound)` (+ `FindModel`) |
 | First-order | `FolFormula.Parse` · factories | `FirstOrderProver.IsValid` / `Entails` → `FolProofStatus` |
-| LTL | `LtlFormula.Parse` · factories | `BoundedModelChecker.CheckSatisfiable` / `FindCounterexample` |
+| LTL | `LtlFormula.Parse` · factories | `BoundedModelChecker.IsSatisfiable` / `FindWitness` / `FindCounterexample` |
 | CTL | `CtlFormula.Parse` · factories | `CtlModelChecker.Holds` / `SatisfyingStates` |
 | Modal | `ModalFormula.Parse` · factories | `ModalSolver.IsValid` / `IsSatisfiable` `(f, ModalSystem.X)` |
 | Fuzzy | factories · `& \| !` (no text parser) | `FuzzySolver.IsValid` / `IsSatisfiable` `(f, FuzzyLogic.X)` |
@@ -274,7 +274,7 @@ formula type exposes both `Parse` and `TryParse`.
 | Finite sets | `SetFormula.Parse` · factories | `FiniteSetsSolver.IsValid` / `IsSatisfiable` / `FindModel` |
 | Finite groups | `GroupSpec` | `GroupFinder.FindGroup` / `CountGroupsUpToIsomorphism` / … |
 
-**Which SMT theory?** `SmtSolver` is the single front door; pick the theory by the atoms in
+**Which SMT theory?** `SmtReasoner` is the single front door; pick the theory by the atoms in
 your formula:
 
 | Your formula contains… | Use |
@@ -288,8 +288,8 @@ your formula:
 ```csharp
 using DeepSigma.LogicEngine.Smt;
 
-SmtSolver.IsValid(SmtFormula.Parse("a = b & b = c -> f(a) = f(c)"), SmtTheory.Euf);   // True
-SmtSolver.IsSatisfiable(LraParser.Parse("x >= 1 & y >= 1 & x + y <= 1"), SmtTheory.Lra); // False
+SmtReasoner.IsValid(SmtFormula.Parse("a = b & b = c -> f(a) = f(c)"), SmtTheory.Euf);   // True
+SmtReasoner.IsSatisfiable(LraParser.Parse("x >= 1 & y >= 1 & x + y <= 1"), SmtTheory.Lra); // False
 ```
 
 The dedicated facades (`EufSolver`, `LraSolver`, `CombinedSolver`, `ArraySolver`) remain
@@ -454,10 +454,10 @@ Tune CDCL via `SolverOptions` (variable/clause decay, restart unit, learned-clau
 var solver = new CdclSolver(SolverOptions.Default with { RestartUnit = 50, VariableDecay = 0.9 });
 ```
 
-You can swap the default engine used by `Reasoner` (for example, to use DPLL as a differential oracle in tests):
+Every `Reasoner` method has an overload taking an explicit `ISatSolver`, so you can choose the engine per call (for example, to use DPLL as a differential oracle in tests, or a Z3-backed solver):
 
 ```csharp
-Reasoner.UseSolver(() => new DpllSolver());
+Reasoner.IsSatisfiable(formula, new DpllSolver());
 ```
 
 ---
@@ -762,7 +762,9 @@ using DeepSigma.LogicEngine.Temporal;
 using DeepSigma.LogicEngine.Transitions;
 
 // Satisfiability: is there a trace where a holds infinitely often?
-var result = BoundedModelChecker.CheckSatisfiable(LtlParser.Parse("G F a"), maxBound: 6);
+Console.WriteLine(BoundedModelChecker.IsSatisfiable(LtlParser.Parse("G F a"), maxBound: 6));  // True
+// FindWitness returns the lasso witness (and the bound it was found at):
+var result = BoundedModelChecker.FindWitness(LtlParser.Parse("G F a"), maxBound: 6);
 Console.WriteLine(result.Found);   // True (a lasso witness)
 
 // Model checking: find a counterexample trace of a transition system.

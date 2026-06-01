@@ -8,6 +8,7 @@ namespace DeepSigma.LogicEngine.Cnf;
 /// </summary>
 public static class DnfTransformer
 {
+    /// <summary>Return a logically equivalent formula in disjunctive normal form.</summary>
     public static Formula ToDnf(Formula formula)
     {
         var nnf = NnfTransformer.ToNnf(formula);

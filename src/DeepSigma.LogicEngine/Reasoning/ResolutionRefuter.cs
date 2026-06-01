@@ -17,11 +17,11 @@ namespace DeepSigma.LogicEngine.Reasoning;
 /// discarded (forward), and existing clauses subsumed by a new one are
 /// retired (backward).</item>
 /// </list>
-/// Bounded by <paramref name="maxClauses"/> to keep runtime finite on hard
-/// instances.
+/// Bounded by a maximum clause count to keep runtime finite on hard instances.
 /// </summary>
 public static class ResolutionRefuter
 {
+    /// <summary>Default cap on the number of clauses generated before the search gives up.</summary>
     public const int DefaultMaxClauses = 50_000;
 
     /// <summary>Refute a CNF formula, treating every clause as part of the support set.</summary>

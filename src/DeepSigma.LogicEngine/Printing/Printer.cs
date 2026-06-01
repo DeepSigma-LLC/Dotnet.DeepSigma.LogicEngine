@@ -17,6 +17,7 @@ public static class Printer
     private const int PrecNot = 5;
     private const int PrecAtom = 6;
 
+    /// <summary>Render the formula as a string with minimal parentheses.</summary>
     public static string Print(Formula formula)
     {
         var sb = new StringBuilder();

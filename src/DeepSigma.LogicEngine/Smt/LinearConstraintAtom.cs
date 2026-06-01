@@ -17,6 +17,7 @@ public sealed record LinearConstraintAtom(
     LinearRelation Relation,
     Rational Constant) : SmtFormula
 {
+    /// <summary>Determines structural equality with another atom (same relation, constant, and ordered terms).</summary>
     public bool Equals(LinearConstraintAtom? other)
     {
         if (other is null || Relation != other.Relation || Constant != other.Constant)
@@ -37,6 +38,7 @@ public sealed record LinearConstraintAtom(
         return true;
     }
 
+    /// <summary>Returns a structural hash code over the relation, constant, and terms.</summary>
     public override int GetHashCode()
     {
         var hash = new HashCode();

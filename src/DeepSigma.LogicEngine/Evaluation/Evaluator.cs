@@ -2,6 +2,7 @@ using DeepSigma.LogicEngine.Formulas;
 
 namespace DeepSigma.LogicEngine.Evaluation;
 
+/// <summary>Evaluates propositional formulas under a variable assignment and collects their variables.</summary>
 public static class Evaluator
 {
     /// <summary>

@@ -10,8 +10,10 @@ namespace DeepSigma.LogicEngine.Solvers;
 /// </summary>
 public sealed class TruthTableSolver
 {
+    /// <summary>The largest number of variables this solver will enumerate.</summary>
     public const int MaxVariables = 20;
 
+    /// <summary>Solve a formula by exhaustive enumeration, returning the first satisfying model or unsatisfiable.</summary>
     public SatResult Solve(Formula formula)
     {
         var vars = Evaluator.Variables(formula).OrderBy(v => v, StringComparer.Ordinal).ToArray();

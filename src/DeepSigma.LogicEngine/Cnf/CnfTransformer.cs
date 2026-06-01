@@ -9,6 +9,7 @@ namespace DeepSigma.LogicEngine.Cnf;
 /// </summary>
 public static class CnfTransformer
 {
+    /// <summary>Return a logically equivalent CNF (may be exponentially larger than the input).</summary>
     public static CnfFormula ToCnf(Formula formula)
     {
         var nnf = NnfTransformer.ToNnf(formula);

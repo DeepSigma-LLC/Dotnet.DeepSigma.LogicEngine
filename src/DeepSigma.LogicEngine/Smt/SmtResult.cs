@@ -19,6 +19,7 @@ public sealed class SmtModel
     /// <summary>The truth value assigned to an atom (false if the atom is unconstrained).</summary>
     public bool Holds(SmtFormula atom) => _atoms.TryGetValue(atom, out var value) && value;
 
+    /// <summary>Renders the model as a sorted brace-delimited list of atom=T/F assignments.</summary>
     public override string ToString()
     {
         if (_atoms.Count == 0)
@@ -36,6 +37,8 @@ public sealed class SmtModel
 /// <summary>Result of an EUF satisfiability query.</summary>
 public sealed record SmtResult(bool IsSatisfiable, SmtModel? Model)
 {
+    /// <summary>The shared unsatisfiable result (no model).</summary>
     public static SmtResult Unsatisfiable { get; } = new(false, null);
+    /// <summary>Creates a satisfiable result carrying the given model.</summary>
     public static SmtResult Satisfiable(SmtModel model) => new(true, model);
 }

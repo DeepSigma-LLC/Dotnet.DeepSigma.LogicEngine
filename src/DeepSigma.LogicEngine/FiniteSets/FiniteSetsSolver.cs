@@ -5,7 +5,7 @@ using DeepSigma.LogicEngine.Solvers;
 
 namespace DeepSigma.LogicEngine.FiniteSets;
 
-/// <summary>A concrete satisfying interpretation found by <see cref="FiniteSetsSolver.FindModel"/>.</summary>
+/// <summary>A concrete satisfying interpretation found by <see cref="FiniteSetsSolver.FindModel(SetFormula, int?)"/>.</summary>
 public sealed record FiniteSetModel(
     int Universe,
     IReadOnlyDictionary<string, IReadOnlySet<int>> Sets,
@@ -38,6 +38,10 @@ public static class FiniteSetsSolver
         return Reasoner.IsSatisfiable(encoder.Encode(formula));
     }
 
+    /// <summary>True if the formula holds in no interpretation over the (bounded) universe.</summary>
+    public static bool IsUnsatisfiable(SetFormula formula, int? universe = null)
+        => !IsSatisfiable(formula, universe);
+
     /// <summary>True if the formula holds in every interpretation over the (bounded) universe.</summary>
     public static bool IsValid(SetFormula formula, int? universe = null)
         => !IsSatisfiable(SetFormula.Not(formula), universe);
@@ -59,6 +63,13 @@ public static class FiniteSetsSolver
         var encoder = new Encoder(ResolveUniverse(formula, universe));
         return Reasoner.IsSatisfiable(encoder.Encode(formula), solver);
     }
+
+    /// <summary>As <see cref="IsUnsatisfiable(SetFormula, int?)"/>, but solving with the supplied engine.</summary>
+    /// <param name="formula">The set formula to test.</param>
+    /// <param name="solver">The SAT engine to solve with.</param>
+    /// <param name="universe">The bounded universe size; null auto-sizes it.</param>
+    public static bool IsUnsatisfiable(SetFormula formula, ISatSolver solver, int? universe = null)
+        => !IsSatisfiable(formula, solver, universe);
 
     /// <summary>As <see cref="IsValid(SetFormula, int?)"/>, but solving with the supplied engine.</summary>
     /// <param name="formula">The set formula to test for validity.</param>

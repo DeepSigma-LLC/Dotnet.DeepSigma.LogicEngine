@@ -30,8 +30,8 @@ public class Z3DifferentialTests
     public void Euf_Agrees(string text, bool _)
     {
         var f = SmtFormula.Parse(text);
-        Assert.Equal(EufSolver.IsSatisfiable(f), Z3SmtSolver.IsSatisfiable(f, Z3SmtTheory.Euf));
-        Assert.Equal(EufSolver.IsValid(f), Z3SmtSolver.IsValid(f, Z3SmtTheory.Euf));
+        Assert.Equal(EufSolver.IsSatisfiable(f), Z3SmtReasoner.IsSatisfiable(f, Z3SmtTheory.Euf));
+        Assert.Equal(EufSolver.IsValid(f), Z3SmtReasoner.IsValid(f, Z3SmtTheory.Euf));
     }
 
     [Theory]
@@ -41,15 +41,15 @@ public class Z3DifferentialTests
     public void Lra_Agrees(string text)
     {
         var f = LraParser.Parse(text);
-        Assert.Equal(LraSolver.IsSatisfiable(f), Z3SmtSolver.IsSatisfiable(f, Z3SmtTheory.Lra));
+        Assert.Equal(LraSolver.IsSatisfiable(f), Z3SmtReasoner.IsSatisfiable(f, Z3SmtTheory.Lra));
     }
 
     [Fact]
     public void Combined_Agrees()
     {
         var mixed = new SmtAnd(LraParser.Parse("x <= y & y <= x"), SmtParser.Parse("f(x) != f(y)"));
-        Assert.Equal(CombinedSolver.IsSatisfiable(mixed), Z3SmtSolver.IsSatisfiable(mixed, Z3SmtTheory.Combined));
-        Assert.False(Z3SmtSolver.IsSatisfiable(mixed, Z3SmtTheory.Combined));   // x = y ⇒ f(x) = f(y), contradicting f(x) ≠ f(y)
+        Assert.Equal(CombinedSolver.IsSatisfiable(mixed), Z3SmtReasoner.IsSatisfiable(mixed, Z3SmtTheory.Combined));
+        Assert.False(Z3SmtReasoner.IsSatisfiable(mixed, Z3SmtTheory.Combined));   // x = y ⇒ f(x) = f(y), contradicting f(x) ≠ f(y)
     }
 
     [Theory]
@@ -59,7 +59,7 @@ public class Z3DifferentialTests
     public void Arrays_Agrees(string text, bool expectedValid)
     {
         var f = SmtParser.Parse(text);
-        Assert.Equal(ArraySolver.IsSatisfiable(f), Z3SmtSolver.IsSatisfiable(f, Z3SmtTheory.Arrays));
-        Assert.Equal(expectedValid, Z3SmtSolver.IsValid(f, Z3SmtTheory.Arrays));
+        Assert.Equal(ArraySolver.IsSatisfiable(f), Z3SmtReasoner.IsSatisfiable(f, Z3SmtTheory.Arrays));
+        Assert.Equal(expectedValid, Z3SmtReasoner.IsValid(f, Z3SmtTheory.Arrays));
     }
 }

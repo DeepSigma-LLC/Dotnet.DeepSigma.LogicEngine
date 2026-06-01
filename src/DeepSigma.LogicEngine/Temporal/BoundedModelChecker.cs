@@ -28,10 +28,21 @@ public sealed record LtlBmcResult(bool Found, int Bound, LtlTrace? Trace);
 /// </summary>
 public static class BoundedModelChecker
 {
-    /// <summary>Search for a lasso trace satisfying the LTL formula, for bounds 0..<paramref name="maxBound"/>.</summary>
+    /// <summary>True if the LTL formula has a lasso model within bounds 0..<paramref name="maxBound"/>. (A "false" is bounded — not a proof of unsatisfiability.)</summary>
+    /// <param name="formula">The LTL formula to test for satisfiability.</param>
+    /// <param name="maxBound">Largest trace length k to try.</param>
+    public static bool IsSatisfiable(LtlFormula formula, int maxBound = 10) => FindWitness(formula, maxBound).Found;
+
+    /// <summary>As <see cref="IsSatisfiable(LtlFormula, int)"/>, but solving each bounded encoding with the supplied engine.</summary>
+    /// <param name="formula">The LTL formula to test for satisfiability.</param>
+    /// <param name="solver">The SAT engine to solve each bounded lasso encoding with.</param>
+    /// <param name="maxBound">Largest trace length k to try.</param>
+    public static bool IsSatisfiable(LtlFormula formula, ISatSolver solver, int maxBound = 10) => FindWitness(formula, solver, maxBound).Found;
+
+    /// <summary>Search for a lasso trace satisfying the LTL formula, for bounds 0..<paramref name="maxBound"/>, returning the witness (and the bound it was found at) or "not found".</summary>
     /// <param name="formula">The LTL formula to satisfy.</param>
     /// <param name="maxBound">Largest trace length k to try. A witness found is real; "not found" is bounded — not a proof of unsatisfiability.</param>
-    public static LtlBmcResult CheckSatisfiable(LtlFormula formula, int maxBound = 10)
+    public static LtlBmcResult FindWitness(LtlFormula formula, int maxBound = 10)
     {
         var nnf = formula.ToNnf();
         var atoms = formula.Atoms();
@@ -64,11 +75,11 @@ public static class BoundedModelChecker
         });
     }
 
-    /// <summary>As <see cref="CheckSatisfiable(LtlFormula, int)"/>, but solving each bounded encoding with the supplied engine (e.g. a Z3-backed <see cref="ISatSolver"/>).</summary>
+    /// <summary>As <see cref="FindWitness(LtlFormula, int)"/>, but solving each bounded encoding with the supplied engine (e.g. a Z3-backed <see cref="ISatSolver"/>).</summary>
     /// <param name="formula">The LTL formula to satisfy.</param>
     /// <param name="solver">The SAT engine to solve each bounded lasso encoding with.</param>
     /// <param name="maxBound">Largest trace length k to try; the bound semantics are unchanged.</param>
-    public static LtlBmcResult CheckSatisfiable(LtlFormula formula, ISatSolver solver, int maxBound = 10)
+    public static LtlBmcResult FindWitness(LtlFormula formula, ISatSolver solver, int maxBound = 10)
     {
         var nnf = formula.ToNnf();
         var atoms = formula.Atoms();

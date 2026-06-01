@@ -9,6 +9,8 @@ namespace DeepSigma.LogicEngine.Solvers;
 /// </summary>
 public sealed record SatResult(bool IsSatisfiable, Model? Model)
 {
+    /// <summary>The shared unsatisfiable result (no model).</summary>
     public static SatResult Unsatisfiable { get; } = new(false, null);
+    /// <summary>Creates a satisfiable result carrying the given model.</summary>
     public static SatResult Satisfiable(Model model) => new(true, model);
 }

@@ -2,12 +2,16 @@ using DeepSigma.LogicEngine.Formulas;
 
 namespace DeepSigma.LogicEngine.Evaluation;
 
+/// <summary>One row of a truth table: a variable assignment and the formula's value under it.</summary>
 public readonly record struct TruthTableRow(Model Assignment, bool Value);
 
+/// <summary>Builds and formats the full truth table of a propositional formula.</summary>
 public static class TruthTable
 {
+    /// <summary>Default cap on the number of variables before a table is refused as too large.</summary>
     public const int DefaultMaxVariables = 16;
 
+    /// <summary>Enumerate every assignment over the formula's variables with its value.</summary>
     public static IReadOnlyList<TruthTableRow> Build(Formula formula, int maxVariables = DefaultMaxVariables)
     {
         var vars = Evaluator.Variables(formula).OrderBy(v => v, StringComparer.Ordinal).ToArray();

@@ -11,35 +11,29 @@ namespace DeepSigma.LogicEngine.Reasoning;
 /// model finding, model enumeration, and model counting.
 ///
 /// <para>
-/// Each method has a parameterless overload that uses the configured default
-/// engine (see <see cref="UseSolver"/>) and an overload that takes an explicit
-/// <see cref="ISatSolver"/>. The explicit overloads are useful for differential
-/// testing — running the same query through two engines and comparing.
+/// Each method has a parameterless overload that uses the default CDCL engine and
+/// an overload that takes an explicit <see cref="ISatSolver"/>. Pass the explicit
+/// overload to choose a different engine (e.g. a Z3-backed solver) or for
+/// differential testing — running the same query through two engines and comparing.
 /// </para>
 /// </summary>
 public static class Reasoner
 {
-    private static Func<ISatSolver> _defaultSolverFactory = () => new CdclSolver();
-
-    /// <summary>
-    /// Replace the engine used by the parameterless overloads. Intended for
-    /// configuration at start-up and for tests; not safe to change concurrently
-    /// with in-flight reasoning calls.
-    /// </summary>
-    public static void UseSolver(Func<ISatSolver> factory)
-        => _defaultSolverFactory = factory ?? throw new ArgumentNullException(nameof(factory));
-
-    private static ISatSolver DefaultSolver() => _defaultSolverFactory();
+    private static ISatSolver DefaultSolver() => new CdclSolver();
 
     // --- Satisfiability ---------------------------------------------------
 
+    /// <summary>True if some assignment satisfies the formula.</summary>
     public static bool IsSatisfiable(Formula formula) => IsSatisfiable(formula, DefaultSolver());
 
+    /// <summary>True if some assignment satisfies the formula, decided with the given engine.</summary>
     public static bool IsSatisfiable(Formula formula, ISatSolver solver)
         => SolveFormula(solver, formula).IsSatisfiable;
 
+    /// <summary>True if no assignment satisfies the formula.</summary>
     public static bool IsUnsatisfiable(Formula formula) => !IsSatisfiable(formula);
 
+    /// <summary>True if no assignment satisfies the formula, decided with the given engine.</summary>
     public static bool IsUnsatisfiable(Formula formula, ISatSolver solver) => !IsSatisfiable(formula, solver);
 
     // --- Validity / equivalence ------------------------------------------
@@ -47,12 +41,14 @@ public static class Reasoner
     /// <summary>True if the formula is true under every assignment.</summary>
     public static bool IsValid(Formula formula) => IsValid(formula, DefaultSolver());
 
+    /// <summary>True if the formula is true under every assignment, decided with the given engine.</summary>
     public static bool IsValid(Formula formula, ISatSolver solver)
         => !IsSatisfiable(new Negation(formula), solver);
 
     /// <summary>True if a ↔ b is a tautology.</summary>
     public static bool AreEquivalent(Formula a, Formula b) => AreEquivalent(a, b, DefaultSolver());
 
+    /// <summary>True if a ↔ b is a tautology, decided with the given engine.</summary>
     public static bool AreEquivalent(Formula a, Formula b, ISatSolver solver)
         => IsValid(new Biconditional(a, b), solver);
 
@@ -62,12 +58,15 @@ public static class Reasoner
     public static bool Entails(IEnumerable<Formula> knowledgeBase, Formula query)
         => Entails(knowledgeBase, query, DefaultSolver());
 
+    /// <summary>True if KB ⊨ query, decided with the given engine.</summary>
     public static bool Entails(IEnumerable<Formula> knowledgeBase, Formula query, ISatSolver solver)
         => Entails(Formula.All(knowledgeBase), query, solver);
 
+    /// <summary>True if KB ⊨ query, i.e. every model of KB is a model of query.</summary>
     public static bool Entails(Formula knowledgeBase, Formula query)
         => Entails(knowledgeBase, query, DefaultSolver());
 
+    /// <summary>True if KB ⊨ query, decided with the given engine.</summary>
     public static bool Entails(Formula knowledgeBase, Formula query, ISatSolver solver)
         => !IsSatisfiable(new Conjunction(knowledgeBase, new Negation(query)), solver);
 
@@ -76,6 +75,7 @@ public static class Reasoner
     /// <summary>Find one satisfying model, or null if none.</summary>
     public static Model? FindModel(Formula formula) => FindModel(formula, DefaultSolver());
 
+    /// <summary>Find one satisfying model, or null if none, using the given engine.</summary>
     public static Model? FindModel(Formula formula, ISatSolver solver)
     {
         var result = SolveFormula(solver, formula);
@@ -172,6 +172,7 @@ public static class Reasoner
     /// <summary>Count satisfying assignments over the formula's variables.</summary>
     public static long CountModels(Formula formula) => CountModels(formula, DefaultSolver());
 
+    /// <summary>Count satisfying assignments over the formula's variables, using the given engine.</summary>
     public static long CountModels(Formula formula, ISatSolver solver)
         => EnumerateModels(formula, solver).LongCount();
 

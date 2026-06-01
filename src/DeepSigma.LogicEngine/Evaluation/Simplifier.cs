@@ -8,6 +8,7 @@ namespace DeepSigma.LogicEngine.Evaluation;
 /// </summary>
 public static class Simplifier
 {
+    /// <summary>Return a logically equivalent, simplified form of the formula.</summary>
     public static Formula Simplify(Formula formula)
     {
         return formula switch

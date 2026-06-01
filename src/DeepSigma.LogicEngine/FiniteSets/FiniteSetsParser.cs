@@ -14,11 +14,13 @@ namespace DeepSigma.LogicEngine.FiniteSets;
 /// </summary>
 public static class FiniteSetsParser
 {
+    /// <summary>Parse a finite-set formula, throwing on a syntax error.</summary>
     public static SetFormula Parse(string source)
     {
         return new State(Tokenize(source)).ParseComplete();
     }
 
+    /// <summary>Try to parse a finite-set formula; returns false on a syntax error.</summary>
     public static bool TryParse(string source, out SetFormula formula)
     {
         try

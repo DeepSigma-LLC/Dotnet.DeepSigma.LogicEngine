@@ -11,10 +11,16 @@ namespace DeepSigma.LogicEngine.Reasoning;
 /// </summary>
 public sealed record HornClause(IReadOnlyList<string> Antecedents, string? Consequent)
 {
+    /// <summary>True when the clause has a consequent and no antecedents (a fact).</summary>
     public bool IsFact => Antecedents.Count == 0 && Consequent is not null;
+
+    /// <summary>True when the clause has no consequent (a negative/goal clause).</summary>
     public bool IsGoalClause => Consequent is null;
+
+    /// <summary>True when the clause has a (single positive) consequent.</summary>
     public bool IsDefinite => Consequent is not null;
 
+    /// <summary>Renders the Horn clause in its <c>body =&gt; head</c> form.</summary>
     public override string ToString()
     {
         if (IsFact)
@@ -26,6 +32,7 @@ public sealed record HornClause(IReadOnlyList<string> Antecedents, string? Conse
     }
 }
 
+/// <summary>Converts a propositional formula's CNF into Horn clauses when possible.</summary>
 public static class HornConverter
 {
     /// <summary>

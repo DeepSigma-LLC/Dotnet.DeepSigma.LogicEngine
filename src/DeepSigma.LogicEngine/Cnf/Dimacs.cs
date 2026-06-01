@@ -13,18 +13,21 @@ public static class Dimacs
     /// <summary>Variable name used for DIMACS variable <c>i</c> when reading: <c>x{i}</c>.</summary>
     public static string DefaultName(int dimacsId) => "x" + dimacsId.ToString(CultureInfo.InvariantCulture);
 
+    /// <summary>Parse DIMACS CNF from a string.</summary>
     public static CnfFormula ReadString(string text, Func<int, string>? nameFor = null)
     {
         using var reader = new StringReader(text);
         return Read(reader, nameFor);
     }
 
+    /// <summary>Parse DIMACS CNF from a file.</summary>
     public static CnfFormula ReadFile(string path, Func<int, string>? nameFor = null)
     {
         using var reader = new StreamReader(path);
         return Read(reader, nameFor);
     }
 
+    /// <summary>Parse DIMACS CNF from a reader, mapping ids to names via <paramref name="nameFor"/>.</summary>
     public static CnfFormula Read(TextReader reader, Func<int, string>? nameFor = null)
     {
         nameFor ??= DefaultName;
@@ -90,6 +93,7 @@ public static class Dimacs
         return new CnfFormula(clauses);
     }
 
+    /// <summary>Render the CNF to a DIMACS-format string.</summary>
     public static string WriteToString(CnfFormula cnf, IEnumerable<string>? header = null)
     {
         using var writer = new StringWriter(CultureInfo.InvariantCulture);
@@ -97,6 +101,7 @@ public static class Dimacs
         return writer.ToString();
     }
 
+    /// <summary>Write the CNF to a file in DIMACS format.</summary>
     public static void WriteFile(string path, CnfFormula cnf, IEnumerable<string>? header = null)
     {
         using var writer = new StreamWriter(path);

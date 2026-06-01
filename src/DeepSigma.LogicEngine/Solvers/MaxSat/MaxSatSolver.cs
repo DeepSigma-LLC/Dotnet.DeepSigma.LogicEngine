@@ -28,6 +28,7 @@ public sealed class MaxSatSolver
     private readonly HashSet<string> _originalVariables;
     private int _freshCounter;
 
+    /// <summary>Create a solver over the given hard clauses (must hold) and weighted soft clauses (penalized when violated).</summary>
     public MaxSatSolver(
         IEnumerable<IReadOnlyList<Literal>> hardClauses,
         IEnumerable<SoftClause> softClauses,
@@ -55,6 +56,7 @@ public sealed class MaxSatSolver
         _solver = new IncrementalCdclSolver(new CnfFormula(hard), _originalVariables, options);
     }
 
+    /// <summary>Find an assignment satisfying every hard clause and minimizing the total weight of unsatisfied soft clauses.</summary>
     public MaxSatResult Solve()
     {
         var lowerBound = 0L;

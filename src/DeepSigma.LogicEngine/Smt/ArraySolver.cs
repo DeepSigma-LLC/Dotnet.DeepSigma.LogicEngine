@@ -14,8 +14,10 @@ public static class ArraySolver
     private const string SelectSymbol = "select";
     private const string StoreSymbol = "store";
 
+    /// <summary>True if some array model satisfies the formula.</summary>
     public static bool IsSatisfiable(SmtFormula formula) => EufSolver.IsSatisfiable(WithArrayAxioms(formula));
 
+    /// <summary>True if no array model satisfies the formula.</summary>
     public static bool IsUnsatisfiable(SmtFormula formula) => !IsSatisfiable(formula);
 
     /// <summary>True if the formula holds in every array model.</summary>

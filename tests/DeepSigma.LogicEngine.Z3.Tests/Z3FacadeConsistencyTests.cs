@@ -7,7 +7,7 @@ namespace DeepSigma.LogicEngine.Z3.Tests;
 
 /// <summary>
 /// Verifies the verb set is consistent across the Z3 facades: IsUnsatisfiable is available on the
-/// propositional and sorted facades (it already was on Z3SmtSolver), and the sorted facade exposes
+/// propositional and sorted facades (it already was on Z3SmtReasoner), and the sorted facade exposes
 /// Entails like the others.
 /// </summary>
 public class Z3FacadeConsistencyTests

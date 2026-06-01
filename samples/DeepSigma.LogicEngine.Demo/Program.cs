@@ -182,7 +182,7 @@ Section("12. MaxSAT: optimize over soft constraints");
 Section("13. Temporal (LTL): bounded model checking");
 {
     var f = LtlFormula.Parse("G F a");   // a holds infinitely often
-    var sat = BoundedModelChecker.CheckSatisfiable(f, maxBound: 4);
+    var sat = BoundedModelChecker.FindWitness(f, maxBound: 4);
     Console.WriteLine($"  '{f}' satisfiable? {sat.Found} (lasso bound {sat.Bound}, loops at {sat.Trace?.LoopStart})");
 
     // A toggle system; check whether 'x is never true' holds (it doesn't).

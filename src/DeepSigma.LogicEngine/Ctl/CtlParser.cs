@@ -11,8 +11,10 @@ namespace DeepSigma.LogicEngine.Ctl;
 /// </summary>
 public static class CtlParser
 {
+    /// <summary>Parse a CTL formula, throwing on a syntax error.</summary>
     public static CtlFormula Parse(string source) => new State(Tokenize(source)).ParseComplete();
 
+    /// <summary>Try to parse a CTL formula; returns false on a syntax error.</summary>
     public static bool TryParse(string source, out CtlFormula formula)
     {
         try { formula = Parse(source); return true; }

@@ -11,8 +11,10 @@ namespace DeepSigma.LogicEngine.FirstOrder;
 /// </summary>
 public static class FolParser
 {
+    /// <summary>Parse a first-order formula, throwing on a syntax error.</summary>
     public static FolFormula Parse(string source) => new State(Tokenize(source)).ParseComplete();
 
+    /// <summary>Try to parse a first-order formula; returns false on a syntax error.</summary>
     public static bool TryParse(string source, out FolFormula formula)
     {
         try { formula = Parse(source); return true; }

@@ -39,6 +39,7 @@ public enum ModalSystem
 /// </summary>
 public static class ModalSolver
 {
+    /// <summary>Default bound on the number of worlds in the searched Kripke models.</summary>
     public const int DefaultMaxWorlds = 6;
 
     /// <summary>True if the formula is satisfiable in some model of the system with up to <paramref name="maxWorlds"/> worlds.</summary>
@@ -55,6 +56,13 @@ public static class ModalSolver
     public static bool IsValid(ModalFormula formula, ModalSystem system, int maxWorlds = DefaultMaxWorlds)
         => !IsSatisfiable(new ModalNot(formula), system, maxWorlds);
 
+    /// <summary>True if the formula has no model of the system up to <paramref name="maxWorlds"/> worlds (relative to the bound, like <see cref="IsSatisfiable(ModalFormula, ModalSystem, int)"/>).</summary>
+    /// <param name="formula">The modal formula to test.</param>
+    /// <param name="system">The modal system whose frame conditions apply.</param>
+    /// <param name="maxWorlds">Largest Kripke model (in worlds) searched; the result is relative to this bound.</param>
+    public static bool IsUnsatisfiable(ModalFormula formula, ModalSystem system, int maxWorlds = DefaultMaxWorlds)
+        => !IsSatisfiable(formula, system, maxWorlds);
+
     /// <summary>As <see cref="IsSatisfiable(ModalFormula, ModalSystem, int)"/>, but solving the bounded SAT encoding with the supplied engine (e.g. a Z3-backed <see cref="ISatSolver"/>).</summary>
     /// <param name="formula">The modal formula to test for satisfiability.</param>
     /// <param name="system">The modal system whose frame conditions the constructed model must satisfy.</param>
@@ -70,6 +78,14 @@ public static class ModalSolver
     /// <param name="maxWorlds">Largest Kripke model (in worlds) searched for a counter-model.</param>
     public static bool IsValid(ModalFormula formula, ModalSystem system, ISatSolver solver, int maxWorlds = DefaultMaxWorlds)
         => !IsSatisfiable(new ModalNot(formula), system, solver, maxWorlds);
+
+    /// <summary>As <see cref="IsUnsatisfiable(ModalFormula, ModalSystem, int)"/>, but solving with the supplied engine.</summary>
+    /// <param name="formula">The modal formula to test.</param>
+    /// <param name="system">The modal system whose frame conditions apply.</param>
+    /// <param name="solver">The SAT engine to solve each bounded encoding with.</param>
+    /// <param name="maxWorlds">Largest Kripke model (in worlds) searched.</param>
+    public static bool IsUnsatisfiable(ModalFormula formula, ModalSystem system, ISatSolver solver, int maxWorlds = DefaultMaxWorlds)
+        => !IsSatisfiable(formula, system, solver, maxWorlds);
 
     /// <summary>Encode "∃ Kripke model on worlds 0..n−1 (frame-valid) with the formula true at world 0".</summary>
     internal static Formula EncodeAt(ModalFormula formula, ModalSystem system, int n)

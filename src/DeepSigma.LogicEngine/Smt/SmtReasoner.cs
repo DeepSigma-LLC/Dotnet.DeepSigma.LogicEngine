@@ -2,7 +2,7 @@ namespace DeepSigma.LogicEngine.Smt;
 
 /// <summary>
 /// The quantifier-free SMT theory to decide a formula under. Selects which of the
-/// dedicated facades <see cref="SmtSolver"/> dispatches to.
+/// dedicated facades <see cref="SmtReasoner"/> dispatches to.
 /// </summary>
 public enum SmtTheory
 {
@@ -47,7 +47,7 @@ public enum SmtTheory
 /// <seealso cref="LiaSolver"/>
 /// <seealso cref="ArraySolver"/>
 /// <seealso cref="CombinedSolver"/>
-public static class SmtSolver
+public static class SmtReasoner
 {
     /// <summary>True if the formula is satisfiable under <paramref name="theory"/>.</summary>
     public static bool IsSatisfiable(SmtFormula formula, SmtTheory theory) => theory switch

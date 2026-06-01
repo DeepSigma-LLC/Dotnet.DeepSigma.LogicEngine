@@ -8,6 +8,7 @@ namespace DeepSigma.LogicEngine.Solvers.MaxSat;
 /// </summary>
 public readonly record struct SoftClause(IReadOnlyList<Literal> Literals, long Weight)
 {
+    /// <summary>A soft clause over the given literals with the given penalty weight.</summary>
     public static SoftClause Of(long weight, params Literal[] literals) => new(literals, weight);
 }
 

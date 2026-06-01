@@ -8,8 +8,10 @@ public static class LraSolver
 {
     private static readonly LraTheory Theory = new();
 
+    /// <summary>True if some assignment of the real variables satisfies the formula.</summary>
     public static bool IsSatisfiable(SmtFormula formula) => Solve(formula).IsSatisfiable;
 
+    /// <summary>True if no assignment of the real variables satisfies the formula.</summary>
     public static bool IsUnsatisfiable(SmtFormula formula) => !IsSatisfiable(formula);
 
     /// <summary>True if the formula holds for every assignment of the real variables.</summary>
@@ -19,6 +21,7 @@ public static class LraSolver
     public static bool Entails(IEnumerable<SmtFormula> knowledgeBase, SmtFormula query)
         => !Solve(new SmtAnd(SmtFormula.All(knowledgeBase), new SmtNot(query))).IsSatisfiable;
 
+    /// <summary>Solve the formula in LRA, returning satisfiability and (if satisfiable) a model.</summary>
     public static SmtResult Solve(SmtFormula formula) => SmtDriver.Solve(formula, Theory);
 
     /// <summary>

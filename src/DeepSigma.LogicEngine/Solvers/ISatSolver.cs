@@ -12,5 +12,6 @@ namespace DeepSigma.LogicEngine.Solvers;
 /// </summary>
 public interface ISatSolver
 {
+    /// <summary>Decide the CNF formula, returning satisfiability and (if satisfiable) a satisfying model.</summary>
     SatResult Solve(CnfFormula formula);
 }

@@ -29,7 +29,7 @@ public enum Z3SmtTheory
 /// the native solvers this is complete (no bounded LIA box), generally faster at scale, and
 /// supports a timeout / <see cref="CancellationToken"/>. Returns a tri-valued <see cref="Z3Result"/>.
 /// </summary>
-public static class Z3SmtSolver
+public static class Z3SmtReasoner
 {
     /// <summary>
     /// Solve <paramref name="formula"/> under <paramref name="theory"/>.

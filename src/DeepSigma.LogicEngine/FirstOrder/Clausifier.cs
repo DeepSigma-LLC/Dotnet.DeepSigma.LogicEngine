@@ -3,18 +3,26 @@ namespace DeepSigma.LogicEngine.FirstOrder;
 /// <summary>A first-order literal: an atom (predicate or equality) with a sign.</summary>
 public sealed record FolLiteral(FolFormula Atom, bool Negated)
 {
+    /// <summary>Return the literal with its sign flipped.</summary>
     public FolLiteral Negate() => this with { Negated = !Negated };
+
+    /// <summary>Renders the literal (a leading <c>!</c> when negated).</summary>
     public override string ToString() => (Negated ? "!" : string.Empty) + Atom;
 }
 
 /// <summary>A disjunctive clause (implicitly universally quantified over its variables).</summary>
 public sealed class FolClause
 {
+    /// <summary>The literals disjoined by this clause.</summary>
     public IReadOnlyList<FolLiteral> Literals { get; }
+
+    /// <summary>Whether this is the empty clause (false / contradiction).</summary>
     public bool IsEmpty => Literals.Count == 0;
 
+    /// <summary>Create a clause from its disjoined literals.</summary>
     public FolClause(IReadOnlyList<FolLiteral> literals) => Literals = literals;
 
+    /// <summary>Renders the clause as its literals joined by <c>|</c> (□ for the empty clause).</summary>
     public override string ToString() => Literals.Count == 0 ? "□" : string.Join(" | ", Literals);
 }
 

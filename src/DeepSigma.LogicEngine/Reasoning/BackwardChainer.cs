@@ -9,15 +9,20 @@ namespace DeepSigma.LogicEngine.Reasoning;
 /// </summary>
 public sealed class ProofNode
 {
+    /// <summary>The atom proved at this node.</summary>
     public string Atom { get; }
+
+    /// <summary>The sub-proofs of the clause's antecedents (empty for a fact).</summary>
     public IReadOnlyList<ProofNode> Premises { get; }
 
+    /// <summary>Create a proof node for an atom with its premise sub-proofs.</summary>
     public ProofNode(string atom, IReadOnlyList<ProofNode> premises)
     {
         Atom = atom;
         Premises = premises;
     }
 
+    /// <summary>Render the proof tree as indented text.</summary>
     public string Render()
     {
         var sb = new StringBuilder();
@@ -48,6 +53,7 @@ public sealed class ProofNode
 /// </summary>
 public static class BackwardChainer
 {
+    /// <summary>Try to prove the query atom; returns a proof tree, or null if it fails.</summary>
     public static ProofNode? Prove(IEnumerable<HornClause> knowledgeBase, string queryAtom)
     {
         var clauses = knowledgeBase.Where(c => c.IsDefinite).ToArray();

@@ -5,10 +5,13 @@ public sealed class Substitution
 {
     private readonly IReadOnlyDictionary<string, FolTerm> _bindings;
 
+    /// <summary>The identity substitution, which binds no variables.</summary>
     public static Substitution Empty { get; } = new(new Dictionary<string, FolTerm>());
 
+    /// <summary>Create a substitution from a variable-name → term mapping.</summary>
     public Substitution(IReadOnlyDictionary<string, FolTerm> bindings) => _bindings = bindings;
 
+    /// <summary>Apply the substitution to a term, recursively resolving bound variables.</summary>
     public FolTerm Apply(FolTerm term)
     {
         switch (term)
@@ -24,6 +27,7 @@ public sealed class Substitution
         }
     }
 
+    /// <summary>Apply the substitution throughout a formula.</summary>
     public FolFormula Apply(FolFormula formula) => formula switch
     {
         FolPredicate p => new FolPredicate(p.Symbol, p.Arguments.Select(Apply).ToArray()),
@@ -38,5 +42,6 @@ public sealed class Substitution
         _ => formula,
     };
 
+    /// <summary>Apply the substitution to a literal's atom, preserving its sign.</summary>
     public FolLiteral Apply(FolLiteral literal) => literal with { Atom = Apply(literal.Atom) };
 }

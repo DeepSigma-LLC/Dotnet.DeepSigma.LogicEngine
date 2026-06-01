@@ -17,6 +17,7 @@ public sealed record FolOptions
     /// <summary>Add full equality axioms when the input uses <c>=</c> and paramodulation is off.</summary>
     public bool IncludeEqualityAxioms { get; init; } = true;
 
+    /// <summary>The default options (paramodulation on, equality axioms on, 20,000-clause budget).</summary>
     public static FolOptions Default { get; } = new();
 }
 

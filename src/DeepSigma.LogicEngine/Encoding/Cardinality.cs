@@ -19,6 +19,7 @@ namespace DeepSigma.LogicEngine.Encoding;
 /// </summary>
 public static class Cardinality
 {
+    /// <summary>Constraint that at least one input is true.</summary>
     public static Formula AtLeastOne(IReadOnlyList<Formula> inputs)
     {
         if (inputs.Count == 0)
@@ -28,6 +29,7 @@ public static class Cardinality
         return Formula.Any(inputs);
     }
 
+    /// <summary>Constraint that at most one input is true (pairwise encoding).</summary>
     public static Formula AtMostOne(IReadOnlyList<Formula> inputs)
     {
         var clauses = new List<Formula>();
@@ -41,9 +43,11 @@ public static class Cardinality
         return Formula.All(clauses);
     }
 
+    /// <summary>Constraint that exactly one input is true.</summary>
     public static Formula ExactlyOne(IReadOnlyList<Formula> inputs)
         => new Conjunction(AtLeastOne(inputs), AtMostOne(inputs));
 
+    /// <summary>Constraint that at most <paramref name="k"/> inputs are true.</summary>
     public static Formula AtMostK(IReadOnlyList<Formula> inputs, int k)
     {
         if (k < 0)
@@ -67,6 +71,7 @@ public static class Cardinality
         return Formula.All(clauses);
     }
 
+    /// <summary>Constraint that at least <paramref name="k"/> inputs are true.</summary>
     public static Formula AtLeastK(IReadOnlyList<Formula> inputs, int k)
     {
         if (k <= 0)
@@ -90,6 +95,7 @@ public static class Cardinality
         return Formula.All(clauses);
     }
 
+    /// <summary>Constraint that exactly <paramref name="k"/> inputs are true.</summary>
     public static Formula ExactlyK(IReadOnlyList<Formula> inputs, int k)
         => new Conjunction(AtMostK(inputs, k), AtLeastK(inputs, k));
 

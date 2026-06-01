@@ -9,12 +9,14 @@ namespace DeepSigma.LogicEngine.Parsing;
 /// </summary>
 public static class Parser
 {
+    /// <summary>Parse a propositional formula, throwing on a syntax error.</summary>
     public static Formula Parse(string source)
     {
         var tokens = Lexer.Tokenize(source);
         return new ParserState(tokens).ParseComplete();
     }
 
+    /// <summary>Try to parse a propositional formula; returns false on a syntax error.</summary>
     public static bool TryParse(string source, out Formula formula)
     {
         try

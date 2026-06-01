@@ -11,8 +11,10 @@ public sealed class KripkeStructure
     private readonly List<int>[] _successors;
     private readonly HashSet<string>[] _labels;
 
+    /// <summary>The number of states; valid state indices are <c>0 .. StateCount-1</c>.</summary>
     public int StateCount { get; }
 
+    /// <summary>Build a Kripke structure from a state count, transition relation, and per-state labels.</summary>
     public KripkeStructure(
         int stateCount,
         IEnumerable<(int From, int To)> transitions,
@@ -43,7 +45,9 @@ public sealed class KripkeStructure
         }
     }
 
+    /// <summary>The successor states reachable from the given state.</summary>
     public IReadOnlyList<int> Successors(int state) => _successors[state];
 
+    /// <summary>Whether the atomic proposition holds in the given state.</summary>
     public bool Holds(int state, string atom) => _labels[state].Contains(atom);
 }

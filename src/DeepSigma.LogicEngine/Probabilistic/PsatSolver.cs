@@ -12,12 +12,15 @@ namespace DeepSigma.LogicEngine.Probabilistic;
 /// <param name="Probability">The right-hand-side probability in [0, 1].</param>
 public sealed record ProbabilityConstraint(Formula Formula, LinearRelation Relation, Rational Probability)
 {
+    /// <summary>A constraint requiring <c>P(formula) = probability</c>.</summary>
     public static ProbabilityConstraint Exactly(Formula formula, Rational probability)
         => new(formula, LinearRelation.Equal, probability);
 
+    /// <summary>A constraint requiring <c>P(formula) ≤ probability</c>.</summary>
     public static ProbabilityConstraint AtMost(Formula formula, Rational probability)
         => new(formula, LinearRelation.LessOrEqual, probability);
 
+    /// <summary>A constraint requiring <c>P(formula) ≥ probability</c>.</summary>
     public static ProbabilityConstraint AtLeast(Formula formula, Rational probability)
         => new(formula, LinearRelation.GreaterOrEqual, probability);
 }

@@ -22,6 +22,7 @@ public sealed class DpllSolver : ISatSolver
             : result;
     }
 
+    /// <summary>Solve a CNF formula, returning satisfiability and (if satisfiable) a model.</summary>
     public SatResult Solve(CnfFormula formula)
     {
         var clauses = new List<HashSet<Literal>>(formula.Clauses.Count);

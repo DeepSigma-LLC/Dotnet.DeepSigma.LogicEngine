@@ -25,6 +25,7 @@ namespace DeepSigma.LogicEngine.Cnf;
 /// </summary>
 public static class TseitinTransformer
 {
+    /// <summary>Produce an equisatisfiable CNF whose size is linear in the input.</summary>
     public static CnfFormula ToCnf(Formula formula)
     {
         var simplified = Simplifier.Simplify(formula);

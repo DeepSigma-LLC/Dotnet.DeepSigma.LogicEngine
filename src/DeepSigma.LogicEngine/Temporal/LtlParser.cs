@@ -13,11 +13,13 @@ public static class LtlParser
     private enum Kind { Id, True, False, Not, And, Or, Implies, Iff, Next, Eventually, Globally, Until, Release, Weak, LParen, RParen, End }
     private readonly record struct Token(Kind Kind, string Text, int Position);
 
+    /// <summary>Parse an LTL formula, throwing on a syntax error.</summary>
     public static LtlFormula Parse(string source)
     {
         return new State(Tokenize(source)).ParseComplete();
     }
 
+    /// <summary>Try to parse an LTL formula; returns false on a syntax error.</summary>
     public static bool TryParse(string source, out LtlFormula formula)
     {
         try { formula = Parse(source); return true; }

@@ -9,6 +9,7 @@ namespace DeepSigma.LogicEngine.Cnf;
 /// </summary>
 public static class NnfTransformer
 {
+    /// <summary>Return a logically equivalent formula in negation normal form.</summary>
     public static Formula ToNnf(Formula formula) => ToNnf(formula, negate: false);
 
     private static Formula ToNnf(Formula formula, bool negate)

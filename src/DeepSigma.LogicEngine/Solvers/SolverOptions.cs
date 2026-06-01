@@ -55,5 +55,6 @@ public sealed record SolverOptions
     /// </summary>
     public double LearnedClauseGrowth { get; init; } = 1.1;
 
+    /// <summary>The default tuning options.</summary>
     public static SolverOptions Default { get; } = new();
 }

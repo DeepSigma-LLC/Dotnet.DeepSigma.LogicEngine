@@ -30,11 +30,13 @@ internal readonly record struct SmtToken(SmtTokenKind Kind, string Text, int Pos
 /// </summary>
 public static class SmtParser
 {
+    /// <summary>Parse an EUF formula, throwing on a syntax error.</summary>
     public static SmtFormula Parse(string source)
     {
         return new State(Tokenize(source)).ParseComplete();
     }
 
+    /// <summary>Try to parse an EUF formula; returns false on a syntax error.</summary>
     public static bool TryParse(string source, out SmtFormula formula)
     {
         try
