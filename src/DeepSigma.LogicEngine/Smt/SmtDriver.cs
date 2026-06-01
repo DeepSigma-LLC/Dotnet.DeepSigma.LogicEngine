@@ -13,7 +13,7 @@ namespace DeepSigma.LogicEngine.Smt;
 /// </summary>
 internal static class SmtDriver
 {
-    public static SmtResult Solve(SmtFormula formula, ITheory theory)
+    public static SmtResult Solve(SmtFormula formula, ITheory theory, CancellationToken cancellationToken = default)
     {
         var (skeleton, atoms) = Abstraction.Abstract(formula);
         var prepared = CnfPreparer.Prepare(skeleton);
@@ -21,7 +21,8 @@ internal static class SmtDriver
 
         while (true)
         {
-            var propositional = solver.Solve();
+            cancellationToken.ThrowIfCancellationRequested();
+            var propositional = solver.Solve(cancellationToken);
             if (!propositional.IsSatisfiable || propositional.Model is null)
             {
                 return SmtResult.Unsatisfiable;

@@ -50,8 +50,9 @@ public static class ModalSolver
     /// <param name="formula">The modal formula to test for satisfiability.</param>
     /// <param name="system">The modal system whose frame conditions the constructed model must satisfy.</param>
     /// <param name="maxWorlds">Largest Kripke model (in worlds) to try.</param>
-    public static Verdict IsSatisfiable(ModalFormula formula, ModalSystem system, int maxWorlds = DefaultMaxWorlds)
-        => FoundModel(formula, system, maxWorlds) ? Verdict.True : Verdict.Unknown;
+    /// <param name="cancellationToken">A token to cancel a long-running solve; on cancellation the call throws <see cref="OperationCanceledException"/>.</param>
+    public static Verdict IsSatisfiable(ModalFormula formula, ModalSystem system, int maxWorlds = DefaultMaxWorlds, CancellationToken cancellationToken = default)
+        => FoundModel(formula, system, maxWorlds, cancellationToken) ? Verdict.True : Verdict.Unknown;
 
     /// <summary>
     /// <see cref="Verdict.False"/> if a counter-model is found within <paramref name="maxWorlds"/>
@@ -61,8 +62,9 @@ public static class ModalSolver
     /// <param name="formula">The modal formula to test for validity.</param>
     /// <param name="system">The modal system whose frame conditions apply.</param>
     /// <param name="maxWorlds">Largest Kripke model (in worlds) searched for a counter-model.</param>
-    public static Verdict IsValid(ModalFormula formula, ModalSystem system, int maxWorlds = DefaultMaxWorlds)
-        => FoundModel(new ModalNot(formula), system, maxWorlds) ? Verdict.False : Verdict.Unknown;
+    /// <param name="cancellationToken">A token to cancel a long-running solve; on cancellation the call throws <see cref="OperationCanceledException"/>.</param>
+    public static Verdict IsValid(ModalFormula formula, ModalSystem system, int maxWorlds = DefaultMaxWorlds, CancellationToken cancellationToken = default)
+        => FoundModel(new ModalNot(formula), system, maxWorlds, cancellationToken) ? Verdict.False : Verdict.Unknown;
 
     /// <summary>
     /// <see cref="Verdict.False"/> if a model is found within <paramref name="maxWorlds"/> worlds;
@@ -72,39 +74,43 @@ public static class ModalSolver
     /// <param name="formula">The modal formula to test.</param>
     /// <param name="system">The modal system whose frame conditions apply.</param>
     /// <param name="maxWorlds">Largest Kripke model (in worlds) searched.</param>
-    public static Verdict IsUnsatisfiable(ModalFormula formula, ModalSystem system, int maxWorlds = DefaultMaxWorlds)
-        => FoundModel(formula, system, maxWorlds) ? Verdict.False : Verdict.Unknown;
+    /// <param name="cancellationToken">A token to cancel a long-running solve; on cancellation the call throws <see cref="OperationCanceledException"/>.</param>
+    public static Verdict IsUnsatisfiable(ModalFormula formula, ModalSystem system, int maxWorlds = DefaultMaxWorlds, CancellationToken cancellationToken = default)
+        => FoundModel(formula, system, maxWorlds, cancellationToken) ? Verdict.False : Verdict.Unknown;
 
-    /// <summary>As <see cref="IsSatisfiable(ModalFormula, ModalSystem, int)"/>, but solving the bounded SAT encoding with the supplied engine (e.g. a Z3-backed <see cref="ISatSolver"/>).</summary>
+    /// <summary>As <see cref="IsSatisfiable(ModalFormula, ModalSystem, int, CancellationToken)"/>, but solving the bounded SAT encoding with the supplied engine (e.g. a Z3-backed <see cref="ISatSolver"/>).</summary>
     /// <param name="formula">The modal formula to test for satisfiability.</param>
     /// <param name="system">The modal system whose frame conditions the constructed model must satisfy.</param>
     /// <param name="solver">The SAT engine to solve each bounded encoding with.</param>
     /// <param name="maxWorlds">Largest Kripke model (in worlds) to try; the bound semantics are unchanged.</param>
-    public static Verdict IsSatisfiable(ModalFormula formula, ModalSystem system, ISatSolver solver, int maxWorlds = DefaultMaxWorlds)
-        => FoundModel(formula, system, solver, maxWorlds) ? Verdict.True : Verdict.Unknown;
+    /// <param name="cancellationToken">A token to cancel a long-running solve; on cancellation the call throws <see cref="OperationCanceledException"/>.</param>
+    public static Verdict IsSatisfiable(ModalFormula formula, ModalSystem system, ISatSolver solver, int maxWorlds = DefaultMaxWorlds, CancellationToken cancellationToken = default)
+        => FoundModel(formula, system, solver, maxWorlds, cancellationToken) ? Verdict.True : Verdict.Unknown;
 
-    /// <summary>As <see cref="IsValid(ModalFormula, ModalSystem, int)"/>, but solving with the supplied engine.</summary>
+    /// <summary>As <see cref="IsValid(ModalFormula, ModalSystem, int, CancellationToken)"/>, but solving with the supplied engine.</summary>
     /// <param name="formula">The modal formula to test for validity.</param>
     /// <param name="system">The modal system whose frame conditions apply.</param>
     /// <param name="solver">The SAT engine to solve each bounded encoding with.</param>
     /// <param name="maxWorlds">Largest Kripke model (in worlds) searched for a counter-model.</param>
-    public static Verdict IsValid(ModalFormula formula, ModalSystem system, ISatSolver solver, int maxWorlds = DefaultMaxWorlds)
-        => FoundModel(new ModalNot(formula), system, solver, maxWorlds) ? Verdict.False : Verdict.Unknown;
+    /// <param name="cancellationToken">A token to cancel a long-running solve; on cancellation the call throws <see cref="OperationCanceledException"/>.</param>
+    public static Verdict IsValid(ModalFormula formula, ModalSystem system, ISatSolver solver, int maxWorlds = DefaultMaxWorlds, CancellationToken cancellationToken = default)
+        => FoundModel(new ModalNot(formula), system, solver, maxWorlds, cancellationToken) ? Verdict.False : Verdict.Unknown;
 
-    /// <summary>As <see cref="IsUnsatisfiable(ModalFormula, ModalSystem, int)"/>, but solving with the supplied engine.</summary>
+    /// <summary>As <see cref="IsUnsatisfiable(ModalFormula, ModalSystem, int, CancellationToken)"/>, but solving with the supplied engine.</summary>
     /// <param name="formula">The modal formula to test.</param>
     /// <param name="system">The modal system whose frame conditions apply.</param>
     /// <param name="solver">The SAT engine to solve each bounded encoding with.</param>
     /// <param name="maxWorlds">Largest Kripke model (in worlds) searched.</param>
-    public static Verdict IsUnsatisfiable(ModalFormula formula, ModalSystem system, ISatSolver solver, int maxWorlds = DefaultMaxWorlds)
-        => FoundModel(formula, system, solver, maxWorlds) ? Verdict.False : Verdict.Unknown;
+    /// <param name="cancellationToken">A token to cancel a long-running solve; on cancellation the call throws <see cref="OperationCanceledException"/>.</param>
+    public static Verdict IsUnsatisfiable(ModalFormula formula, ModalSystem system, ISatSolver solver, int maxWorlds = DefaultMaxWorlds, CancellationToken cancellationToken = default)
+        => FoundModel(formula, system, solver, maxWorlds, cancellationToken) ? Verdict.False : Verdict.Unknown;
 
     /// <summary>True if a frame-valid Kripke model of the formula with up to <paramref name="maxWorlds"/> worlds exists.</summary>
-    private static bool FoundModel(ModalFormula formula, ModalSystem system, int maxWorlds)
-        => BoundedSearch.Any(1, maxWorlds, n => Reasoner.IsSatisfiable(EncodeAt(formula, system, n)));
+    private static bool FoundModel(ModalFormula formula, ModalSystem system, int maxWorlds, CancellationToken cancellationToken)
+        => BoundedSearch.Any(1, maxWorlds, n => Reasoner.IsSatisfiable(EncodeAt(formula, system, n), cancellationToken), cancellationToken);
 
-    private static bool FoundModel(ModalFormula formula, ModalSystem system, ISatSolver solver, int maxWorlds)
-        => BoundedSearch.Any(1, maxWorlds, n => Reasoner.IsSatisfiable(EncodeAt(formula, system, n), solver));
+    private static bool FoundModel(ModalFormula formula, ModalSystem system, ISatSolver solver, int maxWorlds, CancellationToken cancellationToken)
+        => BoundedSearch.Any(1, maxWorlds, n => Reasoner.IsSatisfiable(EncodeAt(formula, system, n), solver, cancellationToken), cancellationToken);
 
     /// <summary>Encode "∃ Kripke model on worlds 0..n−1 (frame-valid) with the formula true at world 0".</summary>
     internal static Formula EncodeAt(ModalFormula formula, ModalSystem system, int n)

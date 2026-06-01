@@ -35,28 +35,31 @@ public static class BoundedModelChecker
     /// </summary>
     /// <param name="formula">The LTL formula to test for satisfiability.</param>
     /// <param name="maxBound">Largest trace length k to try.</param>
-    public static Verdict IsSatisfiable(LtlFormula formula, int maxBound = 10)
-        => FindWitness(formula, maxBound).Found ? Verdict.True : Verdict.Unknown;
+    /// <param name="cancellationToken">A token to cancel a long-running solve; on cancellation the call throws <see cref="OperationCanceledException"/>.</param>
+    public static Verdict IsSatisfiable(LtlFormula formula, int maxBound = 10, CancellationToken cancellationToken = default)
+        => FindWitness(formula, maxBound, cancellationToken).Found ? Verdict.True : Verdict.Unknown;
 
-    /// <summary>As <see cref="IsSatisfiable(LtlFormula, int)"/>, but solving each bounded encoding with the supplied engine.</summary>
+    /// <summary>As <see cref="IsSatisfiable(LtlFormula, int, CancellationToken)"/>, but solving each bounded encoding with the supplied engine.</summary>
     /// <param name="formula">The LTL formula to test for satisfiability.</param>
     /// <param name="solver">The SAT engine to solve each bounded lasso encoding with.</param>
     /// <param name="maxBound">Largest trace length k to try.</param>
-    public static Verdict IsSatisfiable(LtlFormula formula, ISatSolver solver, int maxBound = 10)
-        => FindWitness(formula, solver, maxBound).Found ? Verdict.True : Verdict.Unknown;
+    /// <param name="cancellationToken">A token to cancel a long-running solve; on cancellation the call throws <see cref="OperationCanceledException"/>.</param>
+    public static Verdict IsSatisfiable(LtlFormula formula, ISatSolver solver, int maxBound = 10, CancellationToken cancellationToken = default)
+        => FindWitness(formula, solver, maxBound, cancellationToken).Found ? Verdict.True : Verdict.Unknown;
 
     /// <summary>Search for a lasso trace satisfying the LTL formula, for bounds 0..<paramref name="maxBound"/>, returning the witness (and the bound it was found at) or "not found".</summary>
     /// <param name="formula">The LTL formula to satisfy.</param>
     /// <param name="maxBound">Largest trace length k to try. A witness found is real; "not found" is bounded — not a proof of unsatisfiability.</param>
-    public static LtlBmcResult FindWitness(LtlFormula formula, int maxBound = 10)
+    /// <param name="cancellationToken">A token to cancel a long-running solve; on cancellation the call throws <see cref="OperationCanceledException"/>.</param>
+    public static LtlBmcResult FindWitness(LtlFormula formula, int maxBound = 10, CancellationToken cancellationToken = default)
     {
         var nnf = formula.ToNnf();
         var atoms = formula.Atoms();
         var hit = BoundedSearch.FirstNonNull(0, maxBound, k =>
         {
-            var model = Reasoner.FindModel(Encode(nnf, k, transitionSystem: null));
+            var model = Reasoner.FindModel(Encode(nnf, k, transitionSystem: null), cancellationToken);
             return model is null ? null : new LtlBmcResult(true, k, ExtractTrace(model, atoms, k));
-        });
+        }, cancellationToken);
         return hit ?? new LtlBmcResult(false, maxBound, null);
     }
 
@@ -69,49 +72,52 @@ public static class BoundedModelChecker
     /// <param name="system">The transition system to check (current state by name, next state by the primed name).</param>
     /// <param name="property">The LTL property expected to hold on every run; a returned trace violates it.</param>
     /// <param name="maxBound">Largest trace length k searched. A counterexample found is real; "none found" is bounded, not a proof the property holds.</param>
-    public static LtlTrace? FindCounterexample(TransitionSystem system, LtlFormula property, int maxBound = 10)
+    /// <param name="cancellationToken">A token to cancel a long-running solve; on cancellation the call throws <see cref="OperationCanceledException"/>.</param>
+    public static LtlTrace? FindCounterexample(TransitionSystem system, LtlFormula property, int maxBound = 10, CancellationToken cancellationToken = default)
     {
         var negated = new LtlNot(property).ToNnf();
         var atoms = new HashSet<string>(system.StateVariables, StringComparer.Ordinal);
         atoms.UnionWith(property.Atoms());
         return BoundedSearch.FirstNonNull(0, maxBound, k =>
         {
-            var model = Reasoner.FindModel(Encode(negated, k, system));
+            var model = Reasoner.FindModel(Encode(negated, k, system), cancellationToken);
             return model is null ? null : ExtractTrace(model, atoms, k);
-        });
+        }, cancellationToken);
     }
 
-    /// <summary>As <see cref="FindWitness(LtlFormula, int)"/>, but solving each bounded encoding with the supplied engine (e.g. a Z3-backed <see cref="ISatSolver"/>).</summary>
+    /// <summary>As <see cref="FindWitness(LtlFormula, int, CancellationToken)"/>, but solving each bounded encoding with the supplied engine (e.g. a Z3-backed <see cref="ISatSolver"/>).</summary>
     /// <param name="formula">The LTL formula to satisfy.</param>
     /// <param name="solver">The SAT engine to solve each bounded lasso encoding with.</param>
     /// <param name="maxBound">Largest trace length k to try; the bound semantics are unchanged.</param>
-    public static LtlBmcResult FindWitness(LtlFormula formula, ISatSolver solver, int maxBound = 10)
+    /// <param name="cancellationToken">A token to cancel a long-running solve; on cancellation the call throws <see cref="OperationCanceledException"/>.</param>
+    public static LtlBmcResult FindWitness(LtlFormula formula, ISatSolver solver, int maxBound = 10, CancellationToken cancellationToken = default)
     {
         var nnf = formula.ToNnf();
         var atoms = formula.Atoms();
         var hit = BoundedSearch.FirstNonNull(0, maxBound, k =>
         {
-            var model = Reasoner.FindModel(Encode(nnf, k, transitionSystem: null), solver);
+            var model = Reasoner.FindModel(Encode(nnf, k, transitionSystem: null), solver, cancellationToken);
             return model is null ? null : new LtlBmcResult(true, k, ExtractTrace(model, atoms, k));
-        });
+        }, cancellationToken);
         return hit ?? new LtlBmcResult(false, maxBound, null);
     }
 
-    /// <summary>As <see cref="FindCounterexample(TransitionSystem, LtlFormula, int)"/>, but solving with the supplied engine.</summary>
+    /// <summary>As <see cref="FindCounterexample(TransitionSystem, LtlFormula, int, CancellationToken)"/>, but solving with the supplied engine.</summary>
     /// <param name="system">The transition system to check.</param>
     /// <param name="property">The LTL property expected to hold; a returned trace violates it.</param>
     /// <param name="solver">The SAT engine to solve each bounded encoding with.</param>
     /// <param name="maxBound">Largest trace length k searched.</param>
-    public static LtlTrace? FindCounterexample(TransitionSystem system, LtlFormula property, ISatSolver solver, int maxBound = 10)
+    /// <param name="cancellationToken">A token to cancel a long-running solve; on cancellation the call throws <see cref="OperationCanceledException"/>.</param>
+    public static LtlTrace? FindCounterexample(TransitionSystem system, LtlFormula property, ISatSolver solver, int maxBound = 10, CancellationToken cancellationToken = default)
     {
         var negated = new LtlNot(property).ToNnf();
         var atoms = new HashSet<string>(system.StateVariables, StringComparer.Ordinal);
         atoms.UnionWith(property.Atoms());
         return BoundedSearch.FirstNonNull(0, maxBound, k =>
         {
-            var model = Reasoner.FindModel(Encode(negated, k, system), solver);
+            var model = Reasoner.FindModel(Encode(negated, k, system), solver, cancellationToken);
             return model is null ? null : ExtractTrace(model, atoms, k);
-        });
+        }, cancellationToken);
     }
 
     // --- encoding ---------------------------------------------------------

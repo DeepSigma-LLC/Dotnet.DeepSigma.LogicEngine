@@ -5,7 +5,7 @@ using DeepSigma.LogicEngine.Solvers;
 
 namespace DeepSigma.LogicEngine.FiniteSets;
 
-/// <summary>A concrete satisfying interpretation found by <see cref="FiniteSetsSolver.FindModel(SetFormula, int?)"/>.</summary>
+/// <summary>A concrete satisfying interpretation found by <see cref="FiniteSetsSolver.FindModel(SetFormula, int?, CancellationToken)"/>.</summary>
 public sealed record FiniteSetModel(
     int Universe,
     IReadOnlyDictionary<string, IReadOnlySet<int>> Sets,
@@ -32,60 +32,64 @@ public static class FiniteSetsSolver
     public const int MaxAutoExponent = 8;
 
     /// <summary>True if the formula holds in some interpretation over the (bounded) universe.</summary>
-    public static bool IsSatisfiable(SetFormula formula, int? universe = null)
+    public static bool IsSatisfiable(SetFormula formula, int? universe = null, CancellationToken cancellationToken = default)
     {
         var encoder = new Encoder(ResolveUniverse(formula, universe));
-        return Reasoner.IsSatisfiable(encoder.Encode(formula));
+        return Reasoner.IsSatisfiable(encoder.Encode(formula), cancellationToken);
     }
 
     /// <summary>True if the formula holds in no interpretation over the (bounded) universe.</summary>
-    public static bool IsUnsatisfiable(SetFormula formula, int? universe = null)
-        => !IsSatisfiable(formula, universe);
+    public static bool IsUnsatisfiable(SetFormula formula, int? universe = null, CancellationToken cancellationToken = default)
+        => !IsSatisfiable(formula, universe, cancellationToken);
 
     /// <summary>True if the formula holds in every interpretation over the (bounded) universe.</summary>
-    public static bool IsValid(SetFormula formula, int? universe = null)
-        => !IsSatisfiable(SetFormula.Not(formula), universe);
+    public static bool IsValid(SetFormula formula, int? universe = null, CancellationToken cancellationToken = default)
+        => !IsSatisfiable(SetFormula.Not(formula), universe, cancellationToken);
 
     /// <summary>A concrete satisfying interpretation, or null if the formula is unsatisfiable.</summary>
-    public static FiniteSetModel? FindModel(SetFormula formula, int? universe = null)
+    public static FiniteSetModel? FindModel(SetFormula formula, int? universe = null, CancellationToken cancellationToken = default)
     {
         var encoder = new Encoder(ResolveUniverse(formula, universe));
-        var model = Reasoner.FindModel(encoder.Encode(formula));
+        var model = Reasoner.FindModel(encoder.Encode(formula), cancellationToken);
         return model is null ? null : encoder.Decode(model);
     }
 
-    /// <summary>As <see cref="IsSatisfiable(SetFormula, int?)"/>, but solving the SAT encoding with the supplied engine (e.g. a Z3-backed <see cref="ISatSolver"/>).</summary>
+    /// <summary>As <see cref="IsSatisfiable(SetFormula, int?, CancellationToken)"/>, but solving the SAT encoding with the supplied engine (e.g. a Z3-backed <see cref="ISatSolver"/>).</summary>
     /// <param name="formula">The set formula to test.</param>
     /// <param name="solver">The SAT engine to solve the membership-bit encoding with.</param>
     /// <param name="universe">The bounded universe size; null auto-sizes it as documented above.</param>
-    public static bool IsSatisfiable(SetFormula formula, ISatSolver solver, int? universe = null)
+    /// <param name="cancellationToken">A token to cancel a long-running solve; on cancellation the call throws <see cref="OperationCanceledException"/>.</param>
+    public static bool IsSatisfiable(SetFormula formula, ISatSolver solver, int? universe = null, CancellationToken cancellationToken = default)
     {
         var encoder = new Encoder(ResolveUniverse(formula, universe));
-        return Reasoner.IsSatisfiable(encoder.Encode(formula), solver);
+        return Reasoner.IsSatisfiable(encoder.Encode(formula), solver, cancellationToken);
     }
 
-    /// <summary>As <see cref="IsUnsatisfiable(SetFormula, int?)"/>, but solving with the supplied engine.</summary>
+    /// <summary>As <see cref="IsUnsatisfiable(SetFormula, int?, CancellationToken)"/>, but solving with the supplied engine.</summary>
     /// <param name="formula">The set formula to test.</param>
     /// <param name="solver">The SAT engine to solve with.</param>
     /// <param name="universe">The bounded universe size; null auto-sizes it.</param>
-    public static bool IsUnsatisfiable(SetFormula formula, ISatSolver solver, int? universe = null)
-        => !IsSatisfiable(formula, solver, universe);
+    /// <param name="cancellationToken">A token to cancel a long-running solve; on cancellation the call throws <see cref="OperationCanceledException"/>.</param>
+    public static bool IsUnsatisfiable(SetFormula formula, ISatSolver solver, int? universe = null, CancellationToken cancellationToken = default)
+        => !IsSatisfiable(formula, solver, universe, cancellationToken);
 
-    /// <summary>As <see cref="IsValid(SetFormula, int?)"/>, but solving with the supplied engine.</summary>
+    /// <summary>As <see cref="IsValid(SetFormula, int?, CancellationToken)"/>, but solving with the supplied engine.</summary>
     /// <param name="formula">The set formula to test for validity.</param>
     /// <param name="solver">The SAT engine to solve with.</param>
     /// <param name="universe">The bounded universe size; null auto-sizes it.</param>
-    public static bool IsValid(SetFormula formula, ISatSolver solver, int? universe = null)
-        => !IsSatisfiable(SetFormula.Not(formula), solver, universe);
+    /// <param name="cancellationToken">A token to cancel a long-running solve; on cancellation the call throws <see cref="OperationCanceledException"/>.</param>
+    public static bool IsValid(SetFormula formula, ISatSolver solver, int? universe = null, CancellationToken cancellationToken = default)
+        => !IsSatisfiable(SetFormula.Not(formula), solver, universe, cancellationToken);
 
-    /// <summary>As <see cref="FindModel(SetFormula, int?)"/>, but solving with the supplied engine.</summary>
+    /// <summary>As <see cref="FindModel(SetFormula, int?, CancellationToken)"/>, but solving with the supplied engine.</summary>
     /// <param name="formula">The set formula to solve.</param>
     /// <param name="solver">The SAT engine to solve with.</param>
     /// <param name="universe">The bounded universe size; null auto-sizes it.</param>
-    public static FiniteSetModel? FindModel(SetFormula formula, ISatSolver solver, int? universe = null)
+    /// <param name="cancellationToken">A token to cancel a long-running solve; on cancellation the call throws <see cref="OperationCanceledException"/>.</param>
+    public static FiniteSetModel? FindModel(SetFormula formula, ISatSolver solver, int? universe = null, CancellationToken cancellationToken = default)
     {
         var encoder = new Encoder(ResolveUniverse(formula, universe));
-        var model = Reasoner.FindModel(encoder.Encode(formula), solver);
+        var model = Reasoner.FindModel(encoder.Encode(formula), solver, cancellationToken);
         return model is null ? null : encoder.Decode(model);
     }
 

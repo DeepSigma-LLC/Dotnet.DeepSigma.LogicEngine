@@ -74,17 +74,18 @@ public sealed class IncrementalCdclSolver
     }
 
     /// <summary>Solve the current formula with no assumptions.</summary>
-    public SatResult Solve() => SolveUnder(Array.Empty<Literal>());
+    public SatResult Solve(CancellationToken cancellationToken = default) => SolveUnder(Array.Empty<Literal>(), cancellationToken);
 
     /// <summary>
     /// Solve under assumptions and, on failure, report the responsible subset of
-    /// assumptions (empty if the formula is unsatisfiable regardless of them).
+    /// assumptions (empty if the formula is unsatisfiable regardless of them). A cancelled
+    /// <paramref name="cancellationToken"/> aborts with <see cref="OperationCanceledException"/>.
     /// </summary>
-    public UnsatCoreResult SolveUnderWithCore(IReadOnlyCollection<Literal> assumptions)
+    public UnsatCoreResult SolveUnderWithCore(IReadOnlyCollection<Literal> assumptions, CancellationToken cancellationToken = default)
     {
         var encoded = Encode(assumptions);
         var inputSet = new HashSet<int>(encoded);
-        var outcome = _engine.SearchEx(encoded, out var failed);
+        var outcome = _engine.SearchEx(encoded, out var failed, cancellationToken);
         if (outcome == SearchOutcome.Satisfiable)
         {
             return UnsatCoreResult.Satisfiable(Model.From(_map.Decode(_engine.IsTrue)));
@@ -108,10 +109,10 @@ public sealed class IncrementalCdclSolver
     /// ones. Returns unsatisfiable either when the formula is contradictory or
     /// when the assumptions cannot be met.
     /// </summary>
-    public SatResult SolveUnder(IReadOnlyCollection<Literal> assumptions)
+    public SatResult SolveUnder(IReadOnlyCollection<Literal> assumptions, CancellationToken cancellationToken = default)
     {
         var encoded = Encode(assumptions);
-        if (!_engine.Search(encoded))
+        if (!_engine.Search(encoded, cancellationToken))
         {
             return SatResult.Unsatisfiable;
         }

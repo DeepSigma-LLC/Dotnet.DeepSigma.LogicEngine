@@ -55,8 +55,9 @@ internal sealed class FirstOrderResolver
         _paramodulate = paramodulate;
     }
 
-    public FolProofStatus Refute(IReadOnlyList<FolClause> clauses)
+    public FolProofStatus Refute(IReadOnlyList<FolClause> clauses, CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         var seen = new HashSet<string>(StringComparer.Ordinal);
         var unprocessed = new List<FolClause>();
         var processed = new List<FolClause>();
@@ -89,6 +90,7 @@ internal sealed class FirstOrderResolver
 
         while (unprocessed.Count > 0)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             if (seen.Count > _maxClauses)
             {
                 return FolProofStatus.Unknown;

@@ -50,35 +50,35 @@ public enum SmtTheory
 public static class SmtReasoner
 {
     /// <summary>True if the formula is satisfiable under <paramref name="theory"/>.</summary>
-    public static bool IsSatisfiable(SmtFormula formula, SmtTheory theory) => theory switch
+    public static bool IsSatisfiable(SmtFormula formula, SmtTheory theory, CancellationToken cancellationToken = default) => theory switch
     {
-        SmtTheory.Euf => EufSolver.IsSatisfiable(formula),
-        SmtTheory.Lra => LraSolver.IsSatisfiable(formula),
-        SmtTheory.Combined => CombinedSolver.IsSatisfiable(formula),
-        SmtTheory.Arrays => ArraySolver.IsSatisfiable(formula),
+        SmtTheory.Euf => EufSolver.IsSatisfiable(formula, cancellationToken),
+        SmtTheory.Lra => LraSolver.IsSatisfiable(formula, cancellationToken),
+        SmtTheory.Combined => CombinedSolver.IsSatisfiable(formula, cancellationToken),
+        SmtTheory.Arrays => ArraySolver.IsSatisfiable(formula, cancellationToken),
         _ => throw new ArgumentOutOfRangeException(nameof(theory), theory, "Unknown SMT theory."),
     };
 
     /// <summary>True if the formula is unsatisfiable under <paramref name="theory"/>.</summary>
-    public static bool IsUnsatisfiable(SmtFormula formula, SmtTheory theory) => !IsSatisfiable(formula, theory);
+    public static bool IsUnsatisfiable(SmtFormula formula, SmtTheory theory, CancellationToken cancellationToken = default) => !IsSatisfiable(formula, theory, cancellationToken);
 
     /// <summary>True if the formula holds in every model of <paramref name="theory"/>.</summary>
-    public static bool IsValid(SmtFormula formula, SmtTheory theory) => theory switch
+    public static bool IsValid(SmtFormula formula, SmtTheory theory, CancellationToken cancellationToken = default) => theory switch
     {
-        SmtTheory.Euf => EufSolver.IsValid(formula),
-        SmtTheory.Lra => LraSolver.IsValid(formula),
-        SmtTheory.Combined => CombinedSolver.IsValid(formula),
-        SmtTheory.Arrays => ArraySolver.IsValid(formula),
+        SmtTheory.Euf => EufSolver.IsValid(formula, cancellationToken),
+        SmtTheory.Lra => LraSolver.IsValid(formula, cancellationToken),
+        SmtTheory.Combined => CombinedSolver.IsValid(formula, cancellationToken),
+        SmtTheory.Arrays => ArraySolver.IsValid(formula, cancellationToken),
         _ => throw new ArgumentOutOfRangeException(nameof(theory), theory, "Unknown SMT theory."),
     };
 
     /// <summary>True if the knowledge base theory-entails the query under <paramref name="theory"/>.</summary>
-    public static bool Entails(IEnumerable<SmtFormula> knowledgeBase, SmtFormula query, SmtTheory theory) => theory switch
+    public static bool Entails(IEnumerable<SmtFormula> knowledgeBase, SmtFormula query, SmtTheory theory, CancellationToken cancellationToken = default) => theory switch
     {
-        SmtTheory.Euf => EufSolver.Entails(knowledgeBase, query),
-        SmtTheory.Lra => LraSolver.Entails(knowledgeBase, query),
-        SmtTheory.Combined => CombinedSolver.Entails(knowledgeBase, query),
-        SmtTheory.Arrays => ArraySolver.Entails(knowledgeBase, query),
+        SmtTheory.Euf => EufSolver.Entails(knowledgeBase, query, cancellationToken),
+        SmtTheory.Lra => LraSolver.Entails(knowledgeBase, query, cancellationToken),
+        SmtTheory.Combined => CombinedSolver.Entails(knowledgeBase, query, cancellationToken),
+        SmtTheory.Arrays => ArraySolver.Entails(knowledgeBase, query, cancellationToken),
         _ => throw new ArgumentOutOfRangeException(nameof(theory), theory, "Unknown SMT theory."),
     };
 
@@ -88,12 +88,12 @@ public static class SmtReasoner
     /// the read-over-write axiom instances (the same reduction the array decision
     /// procedures use), so the model ranges over that reduction.
     /// </summary>
-    public static SmtResult Solve(SmtFormula formula, SmtTheory theory) => theory switch
+    public static SmtResult Solve(SmtFormula formula, SmtTheory theory, CancellationToken cancellationToken = default) => theory switch
     {
-        SmtTheory.Euf => EufSolver.Solve(formula),
-        SmtTheory.Lra => LraSolver.Solve(formula),
-        SmtTheory.Combined => CombinedSolver.Solve(formula),
-        SmtTheory.Arrays => EufSolver.Solve(ArraySolver.WithArrayAxioms(formula)),
+        SmtTheory.Euf => EufSolver.Solve(formula, cancellationToken),
+        SmtTheory.Lra => LraSolver.Solve(formula, cancellationToken),
+        SmtTheory.Combined => CombinedSolver.Solve(formula, cancellationToken),
+        SmtTheory.Arrays => EufSolver.Solve(ArraySolver.WithArrayAxioms(formula), cancellationToken),
         _ => throw new ArgumentOutOfRangeException(nameof(theory), theory, "Unknown SMT theory."),
     };
 }

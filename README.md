@@ -24,7 +24,7 @@ Most capabilities follow one pattern — **encode into the SAT/SMT core, solve, 
 
 An optional, opt-in **Z3 backend** (the separate `DeepSigma.LogicEngine.Z3` project) solves the same ASTs with Microsoft's Z3 — adding completeness (unbounded integers), speed at scale, and theories the native engine doesn't express: bit-vectors, nonlinear arithmetic, quantified SMT, and strings. The core stays pure-managed; Z3 is the only part with a native dependency. See [Projects and packages](#projects-and-packages--which-do-i-need) and the [capability matrix](#capability-matrix-native-vs-z3).
 
-Pure managed code; its one dependency, [DeepSigma.Mathematics](https://github.com/DeepSigma-LLC/Dotnet.DeepSigma.Mathematics) (exact-rational arithmetic, a simplex for LRA, an exact LP optimizer with duals for PSAT, finite-group `GroupTable` algebra, and discrete Bayesian-network inference), is also managed. Builds warnings-as-errors and ships with **478 tests** in the core suite — plus 90 differential tests for the optional Z3 engine, and the exact-arithmetic, LP-optimizer, group-algebra, and graphical-model tests in DeepSigma.Mathematics. Correctness is anchored by **differential testing** — each engine is checked against an independent brute-force oracle.
+Pure managed code; its one dependency, [DeepSigma.Mathematics](https://github.com/DeepSigma-LLC/Dotnet.DeepSigma.Mathematics) (exact-rational arithmetic, a simplex for LRA, an exact LP optimizer with duals for PSAT, finite-group `GroupTable` algebra, and discrete Bayesian-network inference), is also managed. Builds warnings-as-errors and ships with **487 tests** in the core suite — plus 90 differential tests for the optional Z3 engine, and the exact-arithmetic, LP-optimizer, group-algebra, and graphical-model tests in DeepSigma.Mathematics. Correctness is anchored by **differential testing** — each engine is checked against an independent brute-force oracle.
 
 ---
 
@@ -175,8 +175,8 @@ MaxSAT. It is MIT-licensed.
 - **What the Z3 engine does here:** solves the project's existing formula types via Z3 — SMT
   *completely* (notably **unbounded** integer arithmetic, with no `[-bound, bound]` box), generally
   faster at scale, with native (extensional) arrays, a tri-valued result (`Satisfiable` /
-  `Unsatisfiable` / `Unknown`), typed models (e.g. `x = 3`, `y = -1/2`), and a **timeout /
-  `CancellationToken`** the native engine lacks.
+  `Unsatisfiable` / `Unknown`), typed models (e.g. `x = 3`, `y = -1/2`), and a **native
+  `TimeSpan? timeout`** knob alongside the `CancellationToken` both engines accept.
 - **What it does *not* do here:** it's a **native dependency** (not pure-managed); it can return
   `Unknown` (e.g. for quantifiers/nonlinear); and it is **not** used for CTL model checking, model
   counting / PSAT, or the first-order resolution prover — those stay on the native engine, by
@@ -286,6 +286,13 @@ bound is decisive; otherwise the answer is `Unknown` (not a proof of the opposit
 these can *refute* validity/entailment (`Verdict.False`, via a counter-model) but cannot *prove*
 it under a fixed bound, so they return `Unknown` instead of a bound-relative `true`. This mirrors
 the first-order prover's `FolProofStatus` and the optional Z3 engine's `Unknown`.
+
+**Cancellation & timeouts.** The solving entry points (`Reasoner`, the SMT facades, `LiaSolver`,
+`FirstOrderProver`, `MaxSatSolver`, `ModalSolver`, `BoundedModelChecker`, `FiniteSetsSolver`,
+`GroupFinder`, and `ISatSolver.Solve`) accept an optional trailing `CancellationToken`; a long
+search is aborted cooperatively with `OperationCanceledException`. For a wall-clock limit, pass
+`new CancellationTokenSource(duration).Token`. (The optional Z3 facades take both a token and a
+`TimeSpan? timeout`, since Z3 has a native timeout knob.)
 
 **Which SMT theory?** `SmtReasoner` is the single front door; pick the theory by the atoms in
 your formula:
@@ -1006,7 +1013,7 @@ These are deliberate scope boundaries, not bugs — see the roadmap.
 
 ```bash
 dotnet build                                   # warnings-as-errors, net10.0
-dotnet test                                    # 478 core tests + 90 Z3 differential tests
+dotnet test                                    # 487 core tests + 90 Z3 differential tests
 dotnet run --project samples/DeepSigma.LogicEngine.Demo
 ```
 

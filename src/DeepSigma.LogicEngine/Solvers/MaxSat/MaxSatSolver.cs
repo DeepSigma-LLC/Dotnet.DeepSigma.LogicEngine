@@ -61,14 +61,15 @@ public sealed class MaxSatSolver
     /// unsatisfied soft clauses. Returns <see cref="MaxSatResult.Unsatisfiable"/> when the hard
     /// clauses cannot all be satisfied (no feasible assignment).
     /// </summary>
-    public MaxSatResult Solve()
+    public MaxSatResult Solve(CancellationToken cancellationToken = default)
     {
         var lowerBound = 0L;
 
         while (true)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var selectors = RefreshSoftClauses();
-            var result = _solver.SolveUnderWithCore(selectors);
+            var result = _solver.SolveUnderWithCore(selectors, cancellationToken);
             if (result.IsSatisfiable)
             {
                 return MaxSatResult.Satisfiable(ProjectModel(result.Model!), lowerBound);

@@ -116,7 +116,8 @@ internal sealed class CdclEngine
     /// true. Returns true if satisfiable. Learned clauses persist for the next
     /// call.
     /// </summary>
-    public bool Search(IReadOnlyList<int> assumptions) => SearchEx(assumptions, out _) == SearchOutcome.Satisfiable;
+    public bool Search(IReadOnlyList<int> assumptions, CancellationToken cancellationToken = default)
+        => SearchEx(assumptions, out _, cancellationToken) == SearchOutcome.Satisfiable;
 
     /// <summary>
     /// Like <see cref="Search"/> but distinguishes a conflict independent of the
@@ -125,7 +126,7 @@ internal sealed class CdclEngine
     /// (<see cref="SearchOutcome.UnsatUnderAssumptions"/>), in which case
     /// <paramref name="failedAssumptions"/> is the responsible subset.
     /// </summary>
-    public SearchOutcome SearchEx(IReadOnlyList<int> assumptions, out IReadOnlyList<int> failedAssumptions)
+    public SearchOutcome SearchEx(IReadOnlyList<int> assumptions, out IReadOnlyList<int> failedAssumptions, CancellationToken cancellationToken = default)
     {
         failedAssumptions = Array.Empty<int>();
         if (_rootConflict)
@@ -138,6 +139,7 @@ internal sealed class CdclEngine
 
         while (true)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var conflict = _propagator.Propagate();
             CdclInvariants.AssertTrailLevelsMonotonic(_trail);
 

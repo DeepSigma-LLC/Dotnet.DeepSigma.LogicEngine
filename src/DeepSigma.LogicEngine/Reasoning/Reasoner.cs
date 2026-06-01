@@ -23,62 +23,63 @@ public static class Reasoner
 
     // --- Satisfiability ---------------------------------------------------
 
-    /// <summary>True if some assignment satisfies the formula.</summary>
-    public static bool IsSatisfiable(Formula formula) => IsSatisfiable(formula, DefaultSolver());
+    /// <summary>True if some assignment satisfies the formula. A cancelled token aborts with <see cref="OperationCanceledException"/>.</summary>
+    public static bool IsSatisfiable(Formula formula, CancellationToken cancellationToken = default)
+        => IsSatisfiable(formula, DefaultSolver(), cancellationToken);
 
     /// <summary>True if some assignment satisfies the formula, decided with the given engine.</summary>
-    public static bool IsSatisfiable(Formula formula, ISatSolver solver)
-        => SolveFormula(solver, formula).IsSatisfiable;
+    public static bool IsSatisfiable(Formula formula, ISatSolver solver, CancellationToken cancellationToken = default)
+        => SolveFormula(solver, formula, cancellationToken).IsSatisfiable;
 
     /// <summary>True if no assignment satisfies the formula.</summary>
-    public static bool IsUnsatisfiable(Formula formula) => !IsSatisfiable(formula);
+    public static bool IsUnsatisfiable(Formula formula, CancellationToken cancellationToken = default) => !IsSatisfiable(formula, cancellationToken);
 
     /// <summary>True if no assignment satisfies the formula, decided with the given engine.</summary>
-    public static bool IsUnsatisfiable(Formula formula, ISatSolver solver) => !IsSatisfiable(formula, solver);
+    public static bool IsUnsatisfiable(Formula formula, ISatSolver solver, CancellationToken cancellationToken = default) => !IsSatisfiable(formula, solver, cancellationToken);
 
     // --- Validity / equivalence ------------------------------------------
 
     /// <summary>True if the formula is true under every assignment.</summary>
-    public static bool IsValid(Formula formula) => IsValid(formula, DefaultSolver());
+    public static bool IsValid(Formula formula, CancellationToken cancellationToken = default) => IsValid(formula, DefaultSolver(), cancellationToken);
 
     /// <summary>True if the formula is true under every assignment, decided with the given engine.</summary>
-    public static bool IsValid(Formula formula, ISatSolver solver)
-        => !IsSatisfiable(new Negation(formula), solver);
+    public static bool IsValid(Formula formula, ISatSolver solver, CancellationToken cancellationToken = default)
+        => !IsSatisfiable(new Negation(formula), solver, cancellationToken);
 
     /// <summary>True if a ↔ b is a tautology.</summary>
-    public static bool AreEquivalent(Formula a, Formula b) => AreEquivalent(a, b, DefaultSolver());
+    public static bool AreEquivalent(Formula a, Formula b, CancellationToken cancellationToken = default) => AreEquivalent(a, b, DefaultSolver(), cancellationToken);
 
     /// <summary>True if a ↔ b is a tautology, decided with the given engine.</summary>
-    public static bool AreEquivalent(Formula a, Formula b, ISatSolver solver)
-        => IsValid(new Biconditional(a, b), solver);
+    public static bool AreEquivalent(Formula a, Formula b, ISatSolver solver, CancellationToken cancellationToken = default)
+        => IsValid(new Biconditional(a, b), solver, cancellationToken);
 
     // --- Entailment -------------------------------------------------------
 
     /// <summary>True if KB ⊨ query, i.e. every model of KB is a model of query.</summary>
-    public static bool Entails(IEnumerable<Formula> knowledgeBase, Formula query)
-        => Entails(knowledgeBase, query, DefaultSolver());
+    public static bool Entails(IEnumerable<Formula> knowledgeBase, Formula query, CancellationToken cancellationToken = default)
+        => Entails(knowledgeBase, query, DefaultSolver(), cancellationToken);
 
     /// <summary>True if KB ⊨ query, decided with the given engine.</summary>
-    public static bool Entails(IEnumerable<Formula> knowledgeBase, Formula query, ISatSolver solver)
-        => Entails(Formula.All(knowledgeBase), query, solver);
+    public static bool Entails(IEnumerable<Formula> knowledgeBase, Formula query, ISatSolver solver, CancellationToken cancellationToken = default)
+        => Entails(Formula.All(knowledgeBase), query, solver, cancellationToken);
 
     /// <summary>True if KB ⊨ query, i.e. every model of KB is a model of query.</summary>
-    public static bool Entails(Formula knowledgeBase, Formula query)
-        => Entails(knowledgeBase, query, DefaultSolver());
+    public static bool Entails(Formula knowledgeBase, Formula query, CancellationToken cancellationToken = default)
+        => Entails(knowledgeBase, query, DefaultSolver(), cancellationToken);
 
     /// <summary>True if KB ⊨ query, decided with the given engine.</summary>
-    public static bool Entails(Formula knowledgeBase, Formula query, ISatSolver solver)
-        => !IsSatisfiable(new Conjunction(knowledgeBase, new Negation(query)), solver);
+    public static bool Entails(Formula knowledgeBase, Formula query, ISatSolver solver, CancellationToken cancellationToken = default)
+        => !IsSatisfiable(new Conjunction(knowledgeBase, new Negation(query)), solver, cancellationToken);
 
     // --- Model finding ----------------------------------------------------
 
     /// <summary>Find one satisfying model, or null if none.</summary>
-    public static Model? FindModel(Formula formula) => FindModel(formula, DefaultSolver());
+    public static Model? FindModel(Formula formula, CancellationToken cancellationToken = default) => FindModel(formula, DefaultSolver(), cancellationToken);
 
     /// <summary>Find one satisfying model, or null if none, using the given engine.</summary>
-    public static Model? FindModel(Formula formula, ISatSolver solver)
+    public static Model? FindModel(Formula formula, ISatSolver solver, CancellationToken cancellationToken = default)
     {
-        var result = SolveFormula(solver, formula);
+        var result = SolveFormula(solver, formula, cancellationToken);
         return result.IsSatisfiable ? result.Model : null;
     }
 
@@ -88,8 +89,8 @@ public static class Reasoner
     /// that accumulates a blocking clause per solution, reusing learned clauses
     /// across iterations.
     /// </summary>
-    public static IEnumerable<Model> EnumerateModels(Formula formula)
-        => EnumerateModels(formula, Evaluator.Variables(formula));
+    public static IEnumerable<Model> EnumerateModels(Formula formula, CancellationToken cancellationToken = default)
+        => EnumerateModels(formula, Evaluator.Variables(formula), cancellationToken);
 
     /// <summary>
     /// Enumerate the distinct assignments of a <paramref name="projection"/> of the
@@ -99,13 +100,13 @@ public static class Reasoner
     /// enumeration (e.g. counting structures up to a symmetry). The parameterless
     /// overload projects on every variable of the formula.
     /// </summary>
-    public static IEnumerable<Model> EnumerateModels(Formula formula, IReadOnlySet<string> projection)
+    public static IEnumerable<Model> EnumerateModels(Formula formula, IReadOnlySet<string> projection, CancellationToken cancellationToken = default)
     {
         var originalVars = Evaluator.Variables(formula);
         var projected = projection.Where(originalVars.Contains).ToHashSet(StringComparer.Ordinal);
         if (projected.Count == 0)
         {
-            if (IsSatisfiable(formula))
+            if (IsSatisfiable(formula, cancellationToken))
             {
                 yield return Model.Empty;
             }
@@ -117,7 +118,7 @@ public static class Reasoner
 
         while (true)
         {
-            var result = solver.Solve();
+            var result = solver.Solve(cancellationToken);
             if (!result.IsSatisfiable || result.Model is null)
             {
                 yield break;
@@ -137,7 +138,7 @@ public static class Reasoner
     /// Enumerate models using a caller-supplied engine. Rebuilds the working
     /// clause set each iteration, so it works with any <see cref="ISatSolver"/>.
     /// </summary>
-    public static IEnumerable<Model> EnumerateModels(Formula formula, ISatSolver solver)
+    public static IEnumerable<Model> EnumerateModels(Formula formula, ISatSolver solver, CancellationToken cancellationToken = default)
     {
         var originalVars = Evaluator.Variables(formula);
         if (originalVars.Count == 0)
@@ -156,7 +157,7 @@ public static class Reasoner
 
         while (true)
         {
-            var result = solver.Solve(new CnfFormula(clauses));
+            var result = solver.Solve(new CnfFormula(clauses), cancellationToken);
             if (!result.IsSatisfiable || result.Model is null)
             {
                 yield break;
@@ -170,11 +171,11 @@ public static class Reasoner
     }
 
     /// <summary>Count satisfying assignments over the formula's variables.</summary>
-    public static long CountModels(Formula formula) => CountModels(formula, DefaultSolver());
+    public static long CountModels(Formula formula, CancellationToken cancellationToken = default) => CountModels(formula, DefaultSolver(), cancellationToken);
 
     /// <summary>Count satisfying assignments over the formula's variables, using the given engine.</summary>
-    public static long CountModels(Formula formula, ISatSolver solver)
-        => EnumerateModels(formula, solver).LongCount();
+    public static long CountModels(Formula formula, ISatSolver solver, CancellationToken cancellationToken = default)
+        => EnumerateModels(formula, solver, cancellationToken).LongCount();
 
     /// <summary>
     /// The clause that rules out <paramref name="model"/> on the given
@@ -184,10 +185,10 @@ public static class Reasoner
     private static List<Literal> BlockingClause(Model model, IReadOnlySet<string> variables)
         => variables.Select(name => model[name] ? Literal.Negative(name) : Literal.Positive(name)).ToList();
 
-    private static SatResult SolveFormula(ISatSolver solver, Formula formula)
+    private static SatResult SolveFormula(ISatSolver solver, Formula formula, CancellationToken cancellationToken)
     {
         var prepared = CnfPreparer.Prepare(formula);
-        var result = solver.Solve(prepared.Cnf);
+        var result = solver.Solve(prepared.Cnf, cancellationToken);
         return result is { IsSatisfiable: true, Model: not null }
             ? SatResult.Satisfiable(CnfPreparer.Project(result.Model, prepared.OriginalVariables))
             : result;

@@ -15,17 +15,17 @@ public static class ArraySolver
     private const string StoreSymbol = "store";
 
     /// <summary>True if some array model satisfies the formula.</summary>
-    public static bool IsSatisfiable(SmtFormula formula) => EufSolver.IsSatisfiable(WithArrayAxioms(formula));
+    public static bool IsSatisfiable(SmtFormula formula, CancellationToken cancellationToken = default) => EufSolver.IsSatisfiable(WithArrayAxioms(formula), cancellationToken);
 
     /// <summary>True if no array model satisfies the formula.</summary>
-    public static bool IsUnsatisfiable(SmtFormula formula) => !IsSatisfiable(formula);
+    public static bool IsUnsatisfiable(SmtFormula formula, CancellationToken cancellationToken = default) => !IsSatisfiable(formula, cancellationToken);
 
     /// <summary>True if the formula holds in every array model.</summary>
-    public static bool IsValid(SmtFormula formula) => !IsSatisfiable(new SmtNot(formula));
+    public static bool IsValid(SmtFormula formula, CancellationToken cancellationToken = default) => !IsSatisfiable(new SmtNot(formula), cancellationToken);
 
     /// <summary>True if the knowledge base entails the query in the array theory.</summary>
-    public static bool Entails(IEnumerable<SmtFormula> knowledgeBase, SmtFormula query)
-        => !IsSatisfiable(new SmtAnd(SmtFormula.All(knowledgeBase), new SmtNot(query)));
+    public static bool Entails(IEnumerable<SmtFormula> knowledgeBase, SmtFormula query, CancellationToken cancellationToken = default)
+        => !IsSatisfiable(new SmtAnd(SmtFormula.All(knowledgeBase), new SmtNot(query)), cancellationToken);
 
     /// <summary>The formula conjoined with the read-over-write axiom instances it requires.</summary>
     public static SmtFormula WithArrayAxioms(SmtFormula formula)

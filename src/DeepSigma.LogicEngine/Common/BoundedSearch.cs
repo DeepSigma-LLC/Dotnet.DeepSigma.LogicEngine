@@ -8,12 +8,13 @@ namespace DeepSigma.LogicEngine.Common;
 /// </summary>
 internal static class BoundedSearch
 {
-    /// <summary>The first <c>attempt(n)</c> (n = <paramref name="from"/>..<paramref name="to"/>) that returns non-null, or null if none does.</summary>
-    public static TResult? FirstNonNull<TResult>(int from, int to, Func<int, TResult?> attempt)
+    /// <summary>The first <c>attempt(n)</c> (n = <paramref name="from"/>..<paramref name="to"/>) that returns non-null, or null if none does. A cancelled token aborts with <see cref="OperationCanceledException"/>.</summary>
+    public static TResult? FirstNonNull<TResult>(int from, int to, Func<int, TResult?> attempt, CancellationToken cancellationToken = default)
         where TResult : class
     {
         for (var n = from; n <= to; n++)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             if (attempt(n) is { } result)
             {
                 return result;
@@ -22,11 +23,12 @@ internal static class BoundedSearch
         return null;
     }
 
-    /// <summary>True if <c>predicate(n)</c> holds for some <c>n = <paramref name="from"/>..<paramref name="to"/></c>.</summary>
-    public static bool Any(int from, int to, Func<int, bool> predicate)
+    /// <summary>True if <c>predicate(n)</c> holds for some <c>n = <paramref name="from"/>..<paramref name="to"/></c>. A cancelled token aborts with <see cref="OperationCanceledException"/>.</summary>
+    public static bool Any(int from, int to, Func<int, bool> predicate, CancellationToken cancellationToken = default)
     {
         for (var n = from; n <= to; n++)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             if (predicate(n))
             {
                 return true;

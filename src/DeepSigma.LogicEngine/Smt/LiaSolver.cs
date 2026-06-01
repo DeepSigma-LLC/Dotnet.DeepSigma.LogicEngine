@@ -27,8 +27,9 @@ public static class LiaSolver
     /// <param name="formula">The formula to decide; its linear-arithmetic atoms range over the integer and any real variables.</param>
     /// <param name="integerVariables">Variable names constrained to the integers; every other variable stays real.</param>
     /// <param name="bound">Per-variable integer box: each integer variable ranges over [−bound, bound].</param>
-    public static Verdict IsSatisfiable(SmtFormula formula, IReadOnlyCollection<string> integerVariables, int bound = DefaultBound)
-        => HasModel(formula, integerVariables, bound) ? Verdict.True : Verdict.Unknown;
+    /// <param name="cancellationToken">A token to cancel a long-running solve; on cancellation the call throws <see cref="OperationCanceledException"/>.</param>
+    public static Verdict IsSatisfiable(SmtFormula formula, IReadOnlyCollection<string> integerVariables, int bound = DefaultBound, CancellationToken cancellationToken = default)
+        => HasModel(formula, integerVariables, bound, cancellationToken) ? Verdict.True : Verdict.Unknown;
 
     /// <summary>
     /// <see cref="Verdict.False"/> if a satisfying assignment is found in the box; otherwise
@@ -37,8 +38,9 @@ public static class LiaSolver
     /// <param name="formula">The formula to decide.</param>
     /// <param name="integerVariables">Variable names constrained to the integers; every other variable stays real.</param>
     /// <param name="bound">Per-variable integer box: each integer variable ranges over [−bound, bound].</param>
-    public static Verdict IsUnsatisfiable(SmtFormula formula, IReadOnlyCollection<string> integerVariables, int bound = DefaultBound)
-        => HasModel(formula, integerVariables, bound) ? Verdict.False : Verdict.Unknown;
+    /// <param name="cancellationToken">A token to cancel a long-running solve; on cancellation the call throws <see cref="OperationCanceledException"/>.</param>
+    public static Verdict IsUnsatisfiable(SmtFormula formula, IReadOnlyCollection<string> integerVariables, int bound = DefaultBound, CancellationToken cancellationToken = default)
+        => HasModel(formula, integerVariables, bound, cancellationToken) ? Verdict.False : Verdict.Unknown;
 
     /// <summary>
     /// <see cref="Verdict.False"/> if a counter-model is found in the box (the formula is provably not
@@ -48,8 +50,9 @@ public static class LiaSolver
     /// <param name="formula">The formula to check for validity.</param>
     /// <param name="integerVariables">Variable names constrained to the integers; every other variable stays real.</param>
     /// <param name="bound">Per-variable integer box: each integer variable ranges over [−bound, bound].</param>
-    public static Verdict IsValid(SmtFormula formula, IReadOnlyCollection<string> integerVariables, int bound = DefaultBound)
-        => HasModel(new SmtNot(formula), integerVariables, bound) ? Verdict.False : Verdict.Unknown;
+    /// <param name="cancellationToken">A token to cancel a long-running solve; on cancellation the call throws <see cref="OperationCanceledException"/>.</param>
+    public static Verdict IsValid(SmtFormula formula, IReadOnlyCollection<string> integerVariables, int bound = DefaultBound, CancellationToken cancellationToken = default)
+        => HasModel(new SmtNot(formula), integerVariables, bound, cancellationToken) ? Verdict.False : Verdict.Unknown;
 
     /// <summary>
     /// <see cref="Verdict.False"/> if a box counter-example shows the knowledge base does not entail the
@@ -60,12 +63,13 @@ public static class LiaSolver
     /// <param name="query">The formula to test for entailment.</param>
     /// <param name="integerVariables">Variable names constrained to the integers; every other variable stays real.</param>
     /// <param name="bound">Per-variable integer box: each integer variable ranges over [−bound, bound].</param>
-    public static Verdict Entails(IEnumerable<SmtFormula> knowledgeBase, SmtFormula query, IReadOnlyCollection<string> integerVariables, int bound = DefaultBound)
-        => HasModel(new SmtAnd(SmtFormula.All(knowledgeBase), new SmtNot(query)), integerVariables, bound) ? Verdict.False : Verdict.Unknown;
+    /// <param name="cancellationToken">A token to cancel a long-running solve; on cancellation the call throws <see cref="OperationCanceledException"/>.</param>
+    public static Verdict Entails(IEnumerable<SmtFormula> knowledgeBase, SmtFormula query, IReadOnlyCollection<string> integerVariables, int bound = DefaultBound, CancellationToken cancellationToken = default)
+        => HasModel(new SmtAnd(SmtFormula.All(knowledgeBase), new SmtNot(query)), integerVariables, bound, cancellationToken) ? Verdict.False : Verdict.Unknown;
 
     /// <summary>True if a satisfying assignment exists within the [−bound, bound] integer box.</summary>
-    private static bool HasModel(SmtFormula formula, IReadOnlyCollection<string> integerVariables, int bound)
-        => SmtDriver.Solve(formula, new LiaTheory(integerVariables, bound)).IsSatisfiable;
+    private static bool HasModel(SmtFormula formula, IReadOnlyCollection<string> integerVariables, int bound, CancellationToken cancellationToken)
+        => SmtDriver.Solve(formula, new LiaTheory(integerVariables, bound), cancellationToken).IsSatisfiable;
 
     /// <summary>The (minimized) conflict core of an inconsistent conjunction of LIA literals, or null if consistent.</summary>
     /// <param name="literals">The conjunction of theory literals to test for consistency.</param>
@@ -78,10 +82,11 @@ public static class LiaSolver
     /// <param name="formula">The formula to solve.</param>
     /// <param name="integerVariables">Variable names constrained to the integers; every other variable stays real.</param>
     /// <param name="bound">Per-variable integer box: each integer variable ranges over [−bound, bound]. The search is complete within this box.</param>
-    public static LiaModel? FindModel(SmtFormula formula, IReadOnlyCollection<string> integerVariables, int bound = DefaultBound)
+    /// <param name="cancellationToken">A token to cancel a long-running solve; on cancellation the call throws <see cref="OperationCanceledException"/>.</param>
+    public static LiaModel? FindModel(SmtFormula formula, IReadOnlyCollection<string> integerVariables, int bound = DefaultBound, CancellationToken cancellationToken = default)
     {
         var theory = new LiaTheory(integerVariables, bound);
-        var result = SmtDriver.Solve(formula, theory);
+        var result = SmtDriver.Solve(formula, theory, cancellationToken);
         if (!result.IsSatisfiable || theory.LastModel is null)
         {
             return null;

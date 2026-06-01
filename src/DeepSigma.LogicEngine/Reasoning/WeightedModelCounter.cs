@@ -5,7 +5,7 @@ namespace DeepSigma.LogicEngine.Reasoning;
 
 /// <summary>
 /// Weighted model counting (WMC): the sum, over all satisfying assignments, of
-/// the product of per-variable weights. Generalizes <see cref="Reasoner.CountModels(Formula)"/>
+/// the product of per-variable weights. Generalizes <see cref="Reasoner.CountModels(Formula, CancellationToken)"/>
 /// (which is WMC with all weights 1) and is the bridge to probabilistic
 /// reasoning — with weights interpreted as probabilities it yields the
 /// probability that a formula holds under independent variable assignments.

@@ -13,8 +13,8 @@ public sealed class TruthTableSolver
     /// <summary>The largest number of variables this solver will enumerate.</summary>
     public const int MaxVariables = 20;
 
-    /// <summary>Solve a formula by exhaustive enumeration, returning the first satisfying model or unsatisfiable.</summary>
-    public SatResult Solve(Formula formula)
+    /// <summary>Solve a formula by exhaustive enumeration, returning the first satisfying model or unsatisfiable. A cancelled token aborts with <see cref="OperationCanceledException"/>.</summary>
+    public SatResult Solve(Formula formula, CancellationToken cancellationToken = default)
     {
         var vars = Evaluator.Variables(formula).OrderBy(v => v, StringComparer.Ordinal).ToArray();
         if (vars.Length > MaxVariables)
@@ -34,6 +34,7 @@ public sealed class TruthTableSolver
         var assignment = new Dictionary<string, bool>(vars.Length);
         for (var row = 0L; row < rows; row++)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             for (var i = 0; i < vars.Length; i++)
             {
                 assignment[vars[i]] = (row & (1L << i)) != 0;

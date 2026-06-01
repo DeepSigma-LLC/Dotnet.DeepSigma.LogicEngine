@@ -13,17 +13,17 @@ public sealed class DpllSolver : ISatSolver
     /// Solve a formula directly: prepare it to CNF and project the resulting
     /// model back onto the original variables. See <see cref="CnfPreparer"/>.
     /// </summary>
-    public SatResult Solve(Formula formula)
+    public SatResult Solve(Formula formula, CancellationToken cancellationToken = default)
     {
         var prepared = CnfPreparer.Prepare(formula);
-        var result = Solve(prepared.Cnf);
+        var result = Solve(prepared.Cnf, cancellationToken);
         return result is { IsSatisfiable: true, Model: not null }
             ? SatResult.Satisfiable(CnfPreparer.Project(result.Model, prepared.OriginalVariables))
             : result;
     }
 
-    /// <summary>Solve a CNF formula, returning satisfiability and (if satisfiable) a model.</summary>
-    public SatResult Solve(CnfFormula formula)
+    /// <summary>Solve a CNF formula, returning satisfiability and (if satisfiable) a model. A cancelled token aborts with <see cref="OperationCanceledException"/>.</summary>
+    public SatResult Solve(CnfFormula formula, CancellationToken cancellationToken = default)
     {
         var clauses = new List<HashSet<Literal>>(formula.Clauses.Count);
         foreach (var clause in formula.Clauses)
@@ -36,7 +36,7 @@ public sealed class DpllSolver : ISatSolver
         }
 
         var assignment = new Dictionary<string, bool>(StringComparer.Ordinal);
-        var result = Search(clauses, assignment);
+        var result = Search(clauses, assignment, cancellationToken);
         if (result is null)
         {
             return SatResult.Unsatisfiable;
@@ -52,8 +52,9 @@ public sealed class DpllSolver : ISatSolver
         return SatResult.Satisfiable(Model.From(result));
     }
 
-    private static Dictionary<string, bool>? Search(List<HashSet<Literal>> clauses, Dictionary<string, bool> assignment)
+    private static Dictionary<string, bool>? Search(List<HashSet<Literal>> clauses, Dictionary<string, bool> assignment, CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         while (true)
         {
             var unit = FindUnit(clauses);
@@ -104,7 +105,7 @@ public sealed class DpllSolver : ISatSolver
             {
                 [branchVar] = value,
             };
-            var result = Search(nextClauses, nextAssignment);
+            var result = Search(nextClauses, nextAssignment, cancellationToken);
             if (result is not null)
             {
                 return result;

@@ -10,20 +10,20 @@ public static class EufSolver
     private static readonly EufTheory Theory = new();
 
     /// <summary>True if some theory model satisfies the formula.</summary>
-    public static bool IsSatisfiable(SmtFormula formula) => Solve(formula).IsSatisfiable;
+    public static bool IsSatisfiable(SmtFormula formula, CancellationToken cancellationToken = default) => Solve(formula, cancellationToken).IsSatisfiable;
 
     /// <summary>True if no theory model satisfies the formula.</summary>
-    public static bool IsUnsatisfiable(SmtFormula formula) => !IsSatisfiable(formula);
+    public static bool IsUnsatisfiable(SmtFormula formula, CancellationToken cancellationToken = default) => !IsSatisfiable(formula, cancellationToken);
 
     /// <summary>True if the formula holds in every theory model.</summary>
-    public static bool IsValid(SmtFormula formula) => !Solve(new SmtNot(formula)).IsSatisfiable;
+    public static bool IsValid(SmtFormula formula, CancellationToken cancellationToken = default) => !Solve(new SmtNot(formula), cancellationToken).IsSatisfiable;
 
     /// <summary>True if the knowledge base theory-entails the query.</summary>
-    public static bool Entails(IEnumerable<SmtFormula> knowledgeBase, SmtFormula query)
-        => !Solve(new SmtAnd(SmtFormula.All(knowledgeBase), new SmtNot(query))).IsSatisfiable;
+    public static bool Entails(IEnumerable<SmtFormula> knowledgeBase, SmtFormula query, CancellationToken cancellationToken = default)
+        => !Solve(new SmtAnd(SmtFormula.All(knowledgeBase), new SmtNot(query)), cancellationToken).IsSatisfiable;
 
     /// <summary>Solve the formula in EUF, returning satisfiability and (if satisfiable) a model.</summary>
-    public static SmtResult Solve(SmtFormula formula) => SmtDriver.Solve(formula, Theory);
+    public static SmtResult Solve(SmtFormula formula, CancellationToken cancellationToken = default) => SmtDriver.Solve(formula, Theory, cancellationToken);
 
     /// <summary>
     /// The minimal conflict core (atoms / negated atoms) of an inconsistent

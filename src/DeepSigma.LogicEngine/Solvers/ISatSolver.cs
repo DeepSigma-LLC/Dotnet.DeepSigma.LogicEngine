@@ -12,6 +12,11 @@ namespace DeepSigma.LogicEngine.Solvers;
 /// </summary>
 public interface ISatSolver
 {
-    /// <summary>Decide the CNF formula, returning satisfiability and (if satisfiable) a satisfying model.</summary>
-    SatResult Solve(CnfFormula formula);
+    /// <summary>
+    /// Decide the CNF formula, returning satisfiability and (if satisfiable) a satisfying model.
+    /// Pass a <paramref name="cancellationToken"/> to abort a long search cooperatively; on
+    /// cancellation the call throws <see cref="OperationCanceledException"/>. (For a wall-clock
+    /// limit, pass <c>new CancellationTokenSource(duration).Token</c>.)
+    /// </summary>
+    SatResult Solve(CnfFormula formula, CancellationToken cancellationToken = default);
 }

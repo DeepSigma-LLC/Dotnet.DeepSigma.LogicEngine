@@ -16,13 +16,15 @@ public sealed class Z3SatSolver : ISatSolver
 {
     /// <summary>
     /// Solves the CNF formula with Z3 and returns a <see cref="SatResult"/> (a satisfying
-    /// <see cref="Model"/> when SAT). Throws <see cref="InvalidOperationException"/> in the
-    /// theoretically-shouldn't-happen case that Z3 reports UNKNOWN for a purely propositional query.
+    /// <see cref="Model"/> when SAT). A cancelled <paramref name="cancellationToken"/> interrupts Z3
+    /// and throws <see cref="OperationCanceledException"/>. Throws <see cref="InvalidOperationException"/>
+    /// only in the theoretically-shouldn't-happen case that Z3 reports UNKNOWN for an uncancelled query.
     /// </summary>
-    public SatResult Solve(CnfFormula formula)
+    public SatResult Solve(CnfFormula formula, CancellationToken cancellationToken = default)
     {
-        // ISatSolver has no timeout/cancellation; reuse Z3Session purely for Context/Solver lifetime.
-        using var session = new Z3Session(timeout: null, cancellationToken: default);
+        cancellationToken.ThrowIfCancellationRequested();
+        // Z3Session wires the token to Z3's interrupt, so a cancel aborts Check().
+        using var session = new Z3Session(timeout: null, cancellationToken: cancellationToken);
         var context = session.Context;
         var solver = session.Solver;
 
@@ -61,6 +63,7 @@ public sealed class Z3SatSolver : ISatSolver
         }
         if (status != MZ3.Status.SATISFIABLE)
         {
+            cancellationToken.ThrowIfCancellationRequested(); // UNKNOWN was caused by the interrupt
             throw new InvalidOperationException("Z3 returned UNKNOWN for a propositional query.");
         }
 

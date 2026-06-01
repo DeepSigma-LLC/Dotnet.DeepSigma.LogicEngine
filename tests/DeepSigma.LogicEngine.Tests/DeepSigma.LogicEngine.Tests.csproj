@@ -2,6 +2,9 @@
   <PropertyGroup>
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
+    <!-- The native facades now accept a CancellationToken; xUnit1051 (prefer TestContext.Current.
+         CancellationToken) is advisory and not relevant to these synchronous unit tests. -->
+    <NoWarn>$(NoWarn);xUnit1051</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

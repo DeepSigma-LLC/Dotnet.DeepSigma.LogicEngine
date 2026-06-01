@@ -32,7 +32,7 @@ public sealed record FolOptions
 public static class FirstOrderProver
 {
     /// <summary>Refute a set of assertions (prove the conjunction unsatisfiable).</summary>
-    public static FolProofStatus Refute(IEnumerable<FolFormula> assertions, FolOptions? options = null)
+    public static FolProofStatus Refute(IEnumerable<FolFormula> assertions, FolOptions? options = null, CancellationToken cancellationToken = default)
     {
         options ??= FolOptions.Default;
         var clauses = Clausifier.ClausifyAll(assertions).ToList();
@@ -42,14 +42,14 @@ public static class FirstOrderProver
             // full axioms are only needed when paramodulation is off.
             clauses.AddRange(EqualityAxioms.For(clauses));
         }
-        return new FirstOrderResolver(options.MaxClauses, options.UseParamodulation).Refute(clauses);
+        return new FirstOrderResolver(options.MaxClauses, options.UseParamodulation).Refute(clauses, cancellationToken);
     }
 
     /// <summary>Is <paramref name="formula"/> valid? Proved = valid; Saturated = not valid; Unknown = budget.</summary>
-    public static FolProofStatus IsValid(FolFormula formula, FolOptions? options = null)
-        => Refute(new[] { new FolNot(formula) }, options);
+    public static FolProofStatus IsValid(FolFormula formula, FolOptions? options = null, CancellationToken cancellationToken = default)
+        => Refute(new[] { new FolNot(formula) }, options, cancellationToken);
 
     /// <summary>Does the knowledge base entail the query?</summary>
-    public static FolProofStatus Entails(IEnumerable<FolFormula> knowledgeBase, FolFormula query, FolOptions? options = null)
-        => Refute(knowledgeBase.Append(new FolNot(query)), options);
+    public static FolProofStatus Entails(IEnumerable<FolFormula> knowledgeBase, FolFormula query, FolOptions? options = null, CancellationToken cancellationToken = default)
+        => Refute(knowledgeBase.Append(new FolNot(query)), options, cancellationToken);
 }
