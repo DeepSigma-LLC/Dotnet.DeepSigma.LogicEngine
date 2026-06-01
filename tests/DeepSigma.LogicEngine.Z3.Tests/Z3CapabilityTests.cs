@@ -22,7 +22,7 @@ public class Z3CapabilityTests
         Assert.False(LiaSolver.IsSatisfiable(f, intVars, bound: 1000));
 
         // Z3's integer arithmetic is unbounded: it finds the solution.
-        var result = Z3Smt.Solve(f, Z3SmtTheory.Lia, intVars);
+        var result = Z3SmtSolver.Solve(f, Z3SmtTheory.Lia, intVars);
         Assert.True(result.IsSatisfiable);
         Assert.Equal((BigInteger)100000, result.Model!["x"]!.Integer);
     }
@@ -33,13 +33,13 @@ public class Z3CapabilityTests
     public void Lia_KnownAnswers(string text, bool expectedSat)
     {
         var f = LraParser.Parse(text);
-        Assert.Equal(expectedSat, Z3Smt.IsSatisfiable(f, Z3SmtTheory.Lia, new[] { "x", "y" }));
+        Assert.Equal(expectedSat, Z3SmtSolver.IsSatisfiable(f, Z3SmtTheory.Lia, new[] { "x", "y" }));
     }
 
     [Fact]
     public void Lra_Model_ExposesRationalValue()
     {
-        var result = Z3Smt.Solve(LraParser.Parse("2*x = 1"), Z3SmtTheory.Lra);
+        var result = Z3SmtSolver.Solve(LraParser.Parse("2*x = 1"), Z3SmtTheory.Lra);
         Assert.True(result.IsSatisfiable);
         Assert.Equal(Rational.Of(1, 2), result.Model!["x"]!.Rational);
     }
@@ -56,7 +56,7 @@ public class Z3CapabilityTests
         };
 
         var native = new MaxSatSolver(hard, soft).Solve();
-        var z3 = Z3MaxSat.Solve(hard, soft);
+        var z3 = Z3MaxSatSolver.Solve(hard, soft);
 
         Assert.Equal(Z3Status.Satisfiable, z3.Status);
         Assert.Equal(1, native.Cost);
@@ -73,5 +73,5 @@ public class Z3CapabilityTests
 
     [Fact]
     public void Lia_RequiresIntegerVariables()
-        => Assert.Throws<ArgumentNullException>(() => Z3Smt.Solve(LraParser.Parse("x = 1"), Z3SmtTheory.Lia));
+        => Assert.Throws<ArgumentNullException>(() => Z3SmtSolver.Solve(LraParser.Parse("x = 1"), Z3SmtTheory.Lia));
 }

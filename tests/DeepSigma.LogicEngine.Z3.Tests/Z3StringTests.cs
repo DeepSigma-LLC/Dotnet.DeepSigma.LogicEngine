@@ -13,36 +13,36 @@ public class Z3StringTests
 {
     [Fact]
     public void Length_OfLiteral_IsValid()
-        => Assert.True(Z3Sorted.IsValid(SortedExpr.Eq(SortedExpr.Length(SortedExpr.Str("hello")), SortedExpr.Int(5))));
+        => Assert.True(Z3SortedSolver.IsValid(SortedExpr.Eq(SortedExpr.Length(SortedExpr.Str("hello")), SortedExpr.Int(5))));
 
     [Fact]
     public void Length_Mismatch_IsUnsatisfiable()
-        => Assert.False(Z3Sorted.IsSatisfiable(SortedExpr.Eq(SortedExpr.Length(SortedExpr.Str("hi")), SortedExpr.Int(5))));
+        => Assert.False(Z3SortedSolver.IsSatisfiable(SortedExpr.Eq(SortedExpr.Length(SortedExpr.Str("hi")), SortedExpr.Int(5))));
 
     [Fact]
     public void Concat_OfLiterals_IsValid()
-        => Assert.True(Z3Sorted.IsValid(
+        => Assert.True(Z3SortedSolver.IsValid(
             SortedExpr.Eq(SortedExpr.StringConcat(SortedExpr.Str("foo"), SortedExpr.Str("bar")), SortedExpr.Str("foobar"))));
 
     [Fact]
     public void Contains_True_IsValid()
-        => Assert.True(Z3Sorted.IsValid(SortedExpr.Contains(SortedExpr.Str("foobar"), SortedExpr.Str("oob"))));
+        => Assert.True(Z3SortedSolver.IsValid(SortedExpr.Contains(SortedExpr.Str("foobar"), SortedExpr.Str("oob"))));
 
     [Fact]
     public void Contains_False_IsUnsatisfiable()
-        => Assert.False(Z3Sorted.IsSatisfiable(SortedExpr.Contains(SortedExpr.Str("foobar"), SortedExpr.Str("xyz"))));
+        => Assert.False(Z3SortedSolver.IsSatisfiable(SortedExpr.Contains(SortedExpr.Str("foobar"), SortedExpr.Str("xyz"))));
 
     [Fact]
     public void PrefixOf_True_IsValid()
-        => Assert.True(Z3Sorted.IsValid(SortedExpr.PrefixOf(SortedExpr.Str("foo"), SortedExpr.Str("foobar"))));
+        => Assert.True(Z3SortedSolver.IsValid(SortedExpr.PrefixOf(SortedExpr.Str("foo"), SortedExpr.Str("foobar"))));
 
     [Fact]
     public void SuffixOf_True_IsValid()
-        => Assert.True(Z3Sorted.IsValid(SortedExpr.SuffixOf(SortedExpr.Str("bar"), SortedExpr.Str("foobar"))));
+        => Assert.True(Z3SortedSolver.IsValid(SortedExpr.SuffixOf(SortedExpr.Str("bar"), SortedExpr.Str("foobar"))));
 
     [Fact]
     public void SuffixOf_False_IsUnsatisfiable()
-        => Assert.False(Z3Sorted.IsSatisfiable(SortedExpr.SuffixOf(SortedExpr.Str("foo"), SortedExpr.Str("foobar"))));
+        => Assert.False(Z3SortedSolver.IsSatisfiable(SortedExpr.SuffixOf(SortedExpr.Str("foo"), SortedExpr.Str("foobar"))));
 
     [Fact]
     public void SolveForUnknownString_IsSatisfiable()
@@ -52,7 +52,7 @@ public class Z3StringTests
         var query = SortedExpr.And(
             SortedExpr.Eq(SortedExpr.StringConcat(s, SortedExpr.Str("bar")), SortedExpr.Str("foobar")),
             SortedExpr.Eq(SortedExpr.Length(s), SortedExpr.Int(3)));
-        Assert.True(Z3Sorted.IsSatisfiable(query));
+        Assert.True(Z3SortedSolver.IsSatisfiable(query));
     }
 
     [Fact]
@@ -63,6 +63,6 @@ public class Z3StringTests
         var query = SortedExpr.And(
             SortedExpr.Eq(SortedExpr.StringConcat(s, SortedExpr.Str("bar")), SortedExpr.Str("foobar")),
             SortedExpr.Eq(SortedExpr.Length(s), SortedExpr.Int(2)));
-        Assert.False(Z3Sorted.IsSatisfiable(query));
+        Assert.False(Z3SortedSolver.IsSatisfiable(query));
     }
 }

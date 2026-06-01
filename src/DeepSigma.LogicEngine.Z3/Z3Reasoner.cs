@@ -23,6 +23,10 @@ public static class Z3Reasoner
     public static bool IsSatisfiable(Formula formula, CancellationToken cancellationToken = default, TimeSpan? timeout = null)
         => Solve(formula, cancellationToken, timeout).IsSatisfiable;
 
+    /// <summary>True if the formula is unsatisfiable. (An <see cref="Z3Status.Unknown"/> result reports false.)</summary>
+    public static bool IsUnsatisfiable(Formula formula, CancellationToken cancellationToken = default, TimeSpan? timeout = null)
+        => Solve(formula, cancellationToken, timeout).IsUnsatisfiable;
+
     /// <summary>True if the formula is valid (its negation is unsatisfiable).</summary>
     public static bool IsValid(Formula formula, CancellationToken cancellationToken = default, TimeSpan? timeout = null)
         => Solve(new Negation(formula), cancellationToken, timeout).IsUnsatisfiable;

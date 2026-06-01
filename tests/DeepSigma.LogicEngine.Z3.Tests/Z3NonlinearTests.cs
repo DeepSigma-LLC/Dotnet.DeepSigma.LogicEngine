@@ -20,7 +20,7 @@ public class Z3NonlinearTests
         var constraint = SortedExpr.And(
             SortedExpr.Eq(x * x, SortedExpr.Int(49)),
             SortedExpr.Gt(x, SortedExpr.Int(0)));
-        var result = Z3Sorted.Solve(constraint);
+        var result = Z3SortedSolver.Solve(constraint);
         Assert.True(result.IsSatisfiable);
         Assert.Equal((BigInteger)7, result.Model!["x"]!.Integer);
     }
@@ -30,7 +30,7 @@ public class Z3NonlinearTests
     {
         // x*x = 2 has no integer (or rational) solution.
         var x = SortedExpr.IntVar("x");
-        Assert.False(Z3Sorted.IsSatisfiable(SortedExpr.Eq(x * x, SortedExpr.Int(2))));
+        Assert.False(Z3SortedSolver.IsSatisfiable(SortedExpr.Eq(x * x, SortedExpr.Int(2))));
     }
 
     [Fact]
@@ -38,7 +38,7 @@ public class Z3NonlinearTests
     {
         // 2*x = 1 over the reals ⇒ x = 1/2.
         var x = SortedExpr.RealVar("x");
-        var result = Z3Sorted.Solve(SortedExpr.Eq(SortedExpr.Real(2) * x, SortedExpr.Real(1)));
+        var result = Z3SortedSolver.Solve(SortedExpr.Eq(SortedExpr.Real(2) * x, SortedExpr.Real(1)));
         Assert.True(result.IsSatisfiable);
         Assert.Equal(Rational.Of(1, 2), result.Model!["x"]!.Rational);
     }
@@ -48,7 +48,7 @@ public class Z3NonlinearTests
     {
         // Pure sorted integers are unbounded (no native LIA box). x > 1000000 is satisfiable.
         var x = SortedExpr.IntVar("x");
-        Assert.True(Z3Sorted.IsSatisfiable(SortedExpr.Gt(x, SortedExpr.Int(1_000_000))));
+        Assert.True(Z3SortedSolver.IsSatisfiable(SortedExpr.Gt(x, SortedExpr.Int(1_000_000))));
     }
 
     [Fact]
@@ -56,6 +56,6 @@ public class Z3NonlinearTests
     {
         // ∀ integer x (here free): x + 1 > x is valid.
         var x = SortedExpr.IntVar("x");
-        Assert.True(Z3Sorted.IsValid(SortedExpr.Gt(x + SortedExpr.Int(1), x)));
+        Assert.True(Z3SortedSolver.IsValid(SortedExpr.Gt(x + SortedExpr.Int(1), x)));
     }
 }

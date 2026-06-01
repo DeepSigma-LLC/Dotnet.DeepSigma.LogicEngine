@@ -7,7 +7,7 @@ namespace DeepSigma.LogicEngine.Z3.Sorted;
 /// A sorted (typed) expression for the Z3-only theories — fixed-width bit-vectors, unbounded
 /// integer/real arithmetic (with quantifiers and nonlinear terms), and strings. Build one with the
 /// static factories and operators, or parse it from text with <see cref="Parse(string)"/>; then
-/// hand a boolean-sorted expression to <see cref="Z3Sorted"/>. This is the front end for theories
+/// hand a boolean-sorted expression to <see cref="Z3SortedSolver"/>. This is the front end for theories
 /// the native engine cannot express.
 ///
 /// <para>
@@ -85,11 +85,41 @@ public abstract record SortedExpr
 
     // --- boolean logic ---
 
+    /// <summary>Logical negation of a boolean expression.</summary>
     public static SortedExpr Not(SortedExpr a) => new NotExpr(a);
+
+    /// <summary>Logical conjunction of two boolean expressions.</summary>
     public static SortedExpr And(SortedExpr a, SortedExpr b) => new BinaryBool(BoolOp.And, a, b);
+
+    /// <summary>Logical disjunction of two boolean expressions.</summary>
     public static SortedExpr Or(SortedExpr a, SortedExpr b) => new BinaryBool(BoolOp.Or, a, b);
+
+    /// <summary>Material implication <paramref name="a"/> → <paramref name="b"/>.</summary>
     public static SortedExpr Implies(SortedExpr a, SortedExpr b) => new BinaryBool(BoolOp.Implies, a, b);
+
+    /// <summary>Biconditional <paramref name="a"/> ↔ <paramref name="b"/>.</summary>
     public static SortedExpr Iff(SortedExpr a, SortedExpr b) => new BinaryBool(BoolOp.Iff, a, b);
+
+    /// <summary>Big conjunction over a sequence; an empty sequence yields <c>true</c>. Built as a balanced tree (depth O(log n)).</summary>
+    public static SortedExpr All(IEnumerable<SortedExpr> expressions)
+        => BalancedCombine(expressions as IReadOnlyList<SortedExpr> ?? expressions.ToList(), And) ?? Bool(true);
+
+    /// <summary>Big disjunction over a sequence; an empty sequence yields <c>false</c>. Built as a balanced tree (depth O(log n)).</summary>
+    public static SortedExpr Any(IEnumerable<SortedExpr> expressions)
+        => BalancedCombine(expressions as IReadOnlyList<SortedExpr> ?? expressions.ToList(), Or) ?? Bool(false);
+
+    // Mirrors the core's internal Common.BalancedFold; inlined because that helper is internal to the
+    // core assembly and the Z3 project deliberately has no InternalsVisibleTo reaching it.
+    private static SortedExpr? BalancedCombine(IReadOnlyList<SortedExpr> items, Func<SortedExpr, SortedExpr, SortedExpr> combine)
+    {
+        if (items.Count == 0)
+        {
+            return null;
+        }
+        SortedExpr Fold(int lo, int hi)
+            => hi - lo == 1 ? items[lo] : combine(Fold(lo, lo + (hi - lo) / 2), Fold(lo + (hi - lo) / 2, hi));
+        return Fold(0, items.Count);
+    }
 
     /// <summary>Equality of two same-sort expressions (yields a boolean).</summary>
     public static SortedExpr Eq(SortedExpr a, SortedExpr b) => new EqExpr(a, b, Negated: false);
@@ -124,44 +154,85 @@ public abstract record SortedExpr
 
     // --- bit-vector shifts ---
 
+    /// <summary>Logical left shift of a bit-vector by <paramref name="b"/> bits.</summary>
     public static SortedExpr Shl(SortedExpr a, SortedExpr b) => new BvBinary(BvBinOp.Shl, a, b);
+
+    /// <summary>Logical (zero-filling) right shift of a bit-vector by <paramref name="b"/> bits.</summary>
     public static SortedExpr LShr(SortedExpr a, SortedExpr b) => new BvBinary(BvBinOp.LShr, a, b);
+
+    /// <summary>Arithmetic (sign-filling) right shift of a bit-vector by <paramref name="b"/> bits.</summary>
     public static SortedExpr AShr(SortedExpr a, SortedExpr b) => new BvBinary(BvBinOp.AShr, a, b);
 
     // --- bit-vector comparisons (unsigned / signed) → boolean ---
 
+    /// <summary>Unsigned less-than of two bit-vectors.</summary>
     public static SortedExpr Ult(SortedExpr a, SortedExpr b) => new BvCompare(BvCmpOp.Ult, a, b);
+
+    /// <summary>Unsigned less-than-or-equal of two bit-vectors.</summary>
     public static SortedExpr Ule(SortedExpr a, SortedExpr b) => new BvCompare(BvCmpOp.Ule, a, b);
+
+    /// <summary>Unsigned greater-than of two bit-vectors.</summary>
     public static SortedExpr Ugt(SortedExpr a, SortedExpr b) => new BvCompare(BvCmpOp.Ugt, a, b);
+
+    /// <summary>Unsigned greater-than-or-equal of two bit-vectors.</summary>
     public static SortedExpr Uge(SortedExpr a, SortedExpr b) => new BvCompare(BvCmpOp.Uge, a, b);
+
+    /// <summary>Signed (two's-complement) less-than of two bit-vectors.</summary>
     public static SortedExpr Slt(SortedExpr a, SortedExpr b) => new BvCompare(BvCmpOp.Slt, a, b);
+
+    /// <summary>Signed (two's-complement) less-than-or-equal of two bit-vectors.</summary>
     public static SortedExpr Sle(SortedExpr a, SortedExpr b) => new BvCompare(BvCmpOp.Sle, a, b);
+
+    /// <summary>Signed (two's-complement) greater-than of two bit-vectors.</summary>
     public static SortedExpr Sgt(SortedExpr a, SortedExpr b) => new BvCompare(BvCmpOp.Sgt, a, b);
+
+    /// <summary>Signed (two's-complement) greater-than-or-equal of two bit-vectors.</summary>
     public static SortedExpr Sge(SortedExpr a, SortedExpr b) => new BvCompare(BvCmpOp.Sge, a, b);
 
     // --- integer / real comparisons → boolean ---
 
+    /// <summary>Less-than of two integer/real expressions.</summary>
     public static SortedExpr Lt(SortedExpr a, SortedExpr b) => new ArithCompare(ArithCmp.Lt, a, b);
+
+    /// <summary>Less-than-or-equal of two integer/real expressions.</summary>
     public static SortedExpr Le(SortedExpr a, SortedExpr b) => new ArithCompare(ArithCmp.Le, a, b);
+
+    /// <summary>Greater-than of two integer/real expressions.</summary>
     public static SortedExpr Gt(SortedExpr a, SortedExpr b) => new ArithCompare(ArithCmp.Gt, a, b);
+
+    /// <summary>Greater-than-or-equal of two integer/real expressions.</summary>
     public static SortedExpr Ge(SortedExpr a, SortedExpr b) => new ArithCompare(ArithCmp.Ge, a, b);
 
     // --- arithmetic operators: bit-vector algebra for bit-vectors, ordinary arithmetic for Int/Real ---
 
+    /// <summary>Addition (bit-vector add modulo 2^width, or ordinary integer/real addition).</summary>
     public static SortedExpr operator +(SortedExpr a, SortedExpr b)
         => a.Sort is BitVecSort ? new BvBinary(BvBinOp.Add, a, b) : new ArithBinary(ArithOp.Add, a, b);
+
+    /// <summary>Subtraction (bit-vector or integer/real).</summary>
     public static SortedExpr operator -(SortedExpr a, SortedExpr b)
         => a.Sort is BitVecSort ? new BvBinary(BvBinOp.Sub, a, b) : new ArithBinary(ArithOp.Sub, a, b);
+
+    /// <summary>Multiplication (bit-vector or integer/real; nonlinear when both sides are variables).</summary>
     public static SortedExpr operator *(SortedExpr a, SortedExpr b)
         => a.Sort is BitVecSort ? new BvBinary(BvBinOp.Mul, a, b) : new ArithBinary(ArithOp.Mul, a, b);
+
+    /// <summary>Unary negation (bit-vector two's-complement negate, or integer/real negation).</summary>
     public static SortedExpr operator -(SortedExpr a)
         => a.Sort is BitVecSort ? new BvUnary(BvUnOp.Neg, a) : new ArithNegate(a);
 
     // --- bit-vector bitwise operators ---
 
+    /// <summary>Bitwise AND of two bit-vectors.</summary>
     public static SortedExpr operator &(SortedExpr a, SortedExpr b) => new BvBinary(BvBinOp.And, a, b);
+
+    /// <summary>Bitwise OR of two bit-vectors.</summary>
     public static SortedExpr operator |(SortedExpr a, SortedExpr b) => new BvBinary(BvBinOp.Or, a, b);
+
+    /// <summary>Bitwise XOR of two bit-vectors.</summary>
     public static SortedExpr operator ^(SortedExpr a, SortedExpr b) => new BvBinary(BvBinOp.Xor, a, b);
+
+    /// <summary>Bitwise NOT (one's complement) of a bit-vector.</summary>
     public static SortedExpr operator ~(SortedExpr a) => new BvUnary(BvUnOp.Not, a);
 }
 

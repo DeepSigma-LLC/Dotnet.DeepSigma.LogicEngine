@@ -16,25 +16,25 @@ public class Z3QuantifierTests
 
     [Fact]
     public void Forall_Successor_IsValid()
-        => Assert.True(Z3Sorted.IsValid(SortedExpr.ForAll(X, SortedExpr.Gt(X + SortedExpr.Int(1), X))));
+        => Assert.True(Z3SortedSolver.IsValid(SortedExpr.ForAll(X, SortedExpr.Gt(X + SortedExpr.Int(1), X))));
 
     [Fact]
     public void Forall_AllPositive_IsNotValid()
-        => Assert.False(Z3Sorted.IsValid(SortedExpr.ForAll(X, SortedExpr.Gt(X, SortedExpr.Int(0)))));
+        => Assert.False(Z3SortedSolver.IsValid(SortedExpr.ForAll(X, SortedExpr.Gt(X, SortedExpr.Int(0)))));
 
     [Fact]
     public void Exists_EvenTarget_IsSatisfiable()
-        => Assert.True(Z3Sorted.IsSatisfiable(SortedExpr.Exists(X, SortedExpr.Eq(SortedExpr.Int(2) * X, SortedExpr.Int(10)))));
+        => Assert.True(Z3SortedSolver.IsSatisfiable(SortedExpr.Exists(X, SortedExpr.Eq(SortedExpr.Int(2) * X, SortedExpr.Int(10)))));
 
     [Fact]
     public void Exists_OddTarget_IsUnsatisfiable()
-        => Assert.False(Z3Sorted.IsSatisfiable(SortedExpr.Exists(X, SortedExpr.Eq(SortedExpr.Int(2) * X, SortedExpr.Int(7)))));
+        => Assert.False(Z3SortedSolver.IsSatisfiable(SortedExpr.Exists(X, SortedExpr.Eq(SortedExpr.Int(2) * X, SortedExpr.Int(7)))));
 
     [Fact]
     public void NestedQuantifiers_NoGreatestInteger_IsValid()
-        => Assert.True(Z3Sorted.IsValid(SortedExpr.ForAll(X, SortedExpr.Exists(Y, SortedExpr.Gt(Y, X)))));
+        => Assert.True(Z3SortedSolver.IsValid(SortedExpr.ForAll(X, SortedExpr.Exists(Y, SortedExpr.Gt(Y, X)))));
 
     [Fact]
     public void MultiVariable_Commutativity_IsValid()
-        => Assert.True(Z3Sorted.IsValid(SortedExpr.ForAll(new[] { X, Y }, SortedExpr.Eq(X + Y, Y + X))));
+        => Assert.True(Z3SortedSolver.IsValid(SortedExpr.ForAll(new[] { X, Y }, SortedExpr.Eq(X + Y, Y + X))));
 }

@@ -284,15 +284,15 @@ solve, translate the model back — not an `ITheory` plugged into the native DPL
 - **Two engines, one front-end.** Native = pure-managed, exact, bounded; Z3 = complete (e.g.
   unbounded integers), fast at scale, but a **native dependency** (`Microsoft.Z3` bundles `libz3`).
   The core project takes no dependency on Z3; consumers opt in by referencing the Z3 project.
-- **Parallel facades, not a hidden swap.** `Z3Reasoner` (propositional), `Z3Smt` (EUF/LRA/LIA/
-  arrays/combined; `Z3SmtTheory` adds unbounded `Lia`), and `Z3MaxSat` mirror the native APIs and
+- **Parallel facades, not a hidden swap.** `Z3Reasoner` (propositional), `Z3SmtSolver` (EUF/LRA/LIA/
+  arrays/combined; `Z3SmtTheory` adds unbounded `Lia`), and `Z3MaxSatSolver` mirror the native APIs and
   return a tri-valued `Z3Result` (`Satisfiable`/`Unsatisfiable`/**`Unknown`** — Z3 is honest about
   not deciding quantified/nonlinear queries, mirroring `FolProofStatus`).
 - **Encoder logics ride the `ISatSolver` seam.** Passing a `Z3SatSolver` to the (additive)
   `ISatSolver` overloads of `ModalSolver`/`BoundedModelChecker`/`FiniteSetsSolver`/`GroupFinder`
   runs those logics on Z3 with no internals exposed; fuzzy routes through the public `FuzzyEncoder`.
 - **New theories live in a `Sorted/` layer** (`Sort` + `SortedExpr`, translated by `SortedToZ3`,
-  solved by `Z3Sorted`) — typed expressions for things the native engine cannot represent:
+  solved by `Z3SortedSolver`) — typed expressions for things the native engine cannot represent:
   **bit-vectors (QF_BV)**, unbounded **int/real** arithmetic (quantifiers + nonlinear), and
   **strings**. This layer carries its own text front-end (`Z3SortedParser`/`Z3SortedPrinter`,
   surfaced as `SortedExpr.Parse`/`ToString`) — a self-contained tokenizer/parser rather than the

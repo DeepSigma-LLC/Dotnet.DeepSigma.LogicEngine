@@ -11,13 +11,7 @@ namespace DeepSigma.LogicEngine.FirstOrder;
 /// </summary>
 public static class FolParser
 {
-    public static FolFormula Parse(string source)
-    {
-        var state = new State(Tokenize(source));
-        var formula = state.ParseFormula();
-        state.Expect(Kind.End);
-        return formula;
-    }
+    public static FolFormula Parse(string source) => new State(Tokenize(source)).ParseComplete();
 
     public static bool TryParse(string source, out FolFormula formula)
     {
@@ -88,33 +82,18 @@ public static class FolParser
         _ => Kind.Id,
     };
 
-    private sealed class State
+    private sealed class State : TokenReader<Token, Kind>
     {
-        private readonly List<Token> _tokens;
         private readonly HashSet<string> _bound = new(StringComparer.Ordinal);
-        private int _pos;
 
-        public State(List<Token> tokens) => _tokens = tokens;
+        public State(List<Token> tokens) : base(tokens, t => t.Kind, t => t.Text) { }
 
-        private Token Peek => _tokens[_pos];
-
-        private Token Advance() => _tokens[_pos++];
-
-        private bool Accept(Kind kind)
+        public FolFormula ParseComplete()
         {
-            if (Peek.Kind == kind) { _pos++; return true; }
-            return false;
+            var formula = ParseIff();
+            Expect(Kind.End);
+            return formula;
         }
-
-        public void Expect(Kind kind)
-        {
-            if (!Accept(kind))
-            {
-                throw new FormatException($"Expected {kind} but found '{Peek.Text}'.");
-            }
-        }
-
-        public FolFormula ParseFormula() => ParseIff();
 
         private FolFormula ParseIff() => ConnectiveChain.LeftAssoc(ParseImplies, () => Accept(Kind.Iff), (l, r) => new FolIff(l, r));
         private FolFormula ParseImplies() => ConnectiveChain.RightAssoc(ParseOr, () => Accept(Kind.Implies), ParseImplies, (l, r) => new FolImplies(l, r));
@@ -127,7 +106,7 @@ public static class FolParser
             {
                 return new FolNot(ParseUnary());
             }
-            if (Peek.Kind is Kind.Forall or Kind.Exists)
+            if (PeekKind() is Kind.Forall or Kind.Exists)
             {
                 var isForall = Advance().Kind == Kind.Forall;
                 var variable = ExpectId();
@@ -184,9 +163,9 @@ public static class FolParser
 
         private string ExpectId()
         {
-            if (Peek.Kind != Kind.Id)
+            if (PeekKind() != Kind.Id)
             {
-                throw new FormatException($"Expected an identifier but found '{Peek.Text}'.");
+                throw new FormatException($"Expected an identifier but found '{Peek().Text}'.");
             }
             return Advance().Text;
         }

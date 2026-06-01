@@ -1,4 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <!-- This is the consumer-facing optional engine: enforce that every public member is documented
+         (CS1591 becomes an error under the repo's warnings-as-errors). -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
   <ItemGroup>
     <!-- The Z3 SMT solver (Microsoft Research). MIT-licensed; the package bundles the
          native libz3 binaries per RID. This project is the only one that takes a native

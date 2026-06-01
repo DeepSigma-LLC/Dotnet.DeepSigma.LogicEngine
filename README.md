@@ -118,7 +118,7 @@ src/DeepSigma.LogicEngine/        the library
   Probabilistic/   ProbabilityConstraint, PsatSolver (coherence + bounds; column generation)
   FiniteSets/      SetExpr/ElementExpr/SetFormula, parser/printer, FiniteSetsSolver
   FiniteGroups/    GroupSpec, GroupFinder (SAT existence/find/enumerate/count-up-to-iso)
-src/DeepSigma.LogicEngine.Z3/     OPTIONAL Z3-backed engine (Z3Reasoner, Z3Smt, Z3MaxSat) — native libz3
+src/DeepSigma.LogicEngine.Z3/     OPTIONAL Z3-backed engine (Z3Reasoner, Z3SmtSolver, Z3MaxSatSolver) — native libz3
 tests/DeepSigma.LogicEngine.Tests/    xUnit v3 test suite (+ DIMACS benchmarks)
 tests/DeepSigma.LogicEngine.Z3.Tests/ Z3 vs native differential tests (isolates the libz3 dependency)
 samples/DeepSigma.LogicEngine.Demo/    guided feature walkthrough
@@ -147,7 +147,7 @@ using DeepSigma.LogicEngine.Probabilistic; // ProbabilityConstraint, PsatSolver
 using DeepSigma.LogicEngine.FiniteSets;   // SetFormula, SetExpr, ElementExpr, FiniteSetsSolver
 using DeepSigma.LogicEngine.FiniteGroups; // GroupFinder, GroupSpec
 using DeepSigma.Mathematics.Algebra;      // GroupTable, GroupTables
-using DeepSigma.LogicEngine.Z3;           // OPTIONAL: Z3Reasoner, Z3Smt, Z3SmtTheory, Z3MaxSat
+using DeepSigma.LogicEngine.Z3;           // OPTIONAL: Z3Reasoner, Z3SmtSolver, Z3SmtTheory, Z3MaxSatSolver
 ```
 
 ---
@@ -158,7 +158,7 @@ using DeepSigma.LogicEngine.Z3;           // OPTIONAL: Z3Reasoner, Z3Smt, Z3SmtT
 |---------|---------|--------------------|
 | `DeepSigma.Mathematics` | Exact-rational arithmetic, simplex, LP optimizer, group algebra. The one dependency of the core engine. | Transitively — you don't reference it directly unless you use its types (`Rational`, `GroupTable`). |
 | **`DeepSigma.LogicEngine`** | The **pure-managed engine** — every logic, no native dependencies. This is the default. | **Almost always. Start here.** |
-| `DeepSigma.LogicEngine.Z3` | **Optional** Z3-backed engine (`Z3Reasoner`, `Z3Smt`, `Z3MaxSat`). Brings the native `libz3` binaries. | Add this *only* when you need Z3's completeness (e.g. unbounded integers), large-scale speed, or its Z3-only theories: bit-vectors, nonlinear arithmetic, quantifiers, and strings. |
+| `DeepSigma.LogicEngine.Z3` | **Optional** Z3-backed engine (`Z3Reasoner`, `Z3SmtSolver`, `Z3MaxSatSolver`). Brings the native `libz3` binaries. | Add this *only* when you need Z3's completeness (e.g. unbounded integers), large-scale speed, or its Z3-only theories: bit-vectors, nonlinear arithmetic, quantifiers, and strings. |
 
 Most consumers reference only `DeepSigma.LogicEngine`. The native engine is pure managed and
 exact; reach for `…​.Z3` when you specifically want what Z3 adds.
@@ -185,15 +185,15 @@ MaxSAT. It is MIT-licensed.
 | Capability | Native engine | Z3 engine | Notes |
 |------------|:------:|:--:|-------|
 | Propositional SAT / validity / entailment | ✅ | ✅ (`Z3Reasoner`) | |
-| SMT: EUF, LRA, arrays, combined | ✅ | ✅ (`Z3Smt`) | Z3 is faster at scale |
+| SMT: EUF, LRA, arrays, combined | ✅ | ✅ (`Z3SmtSolver`) | Z3 is faster at scale |
 | SMT: linear **integer** arithmetic (LIA) | ✅ bounded box | ✅ **unbounded** | Z3 is complete |
-| MaxSAT | ✅ (`MaxSatSolver`) | ✅ (`Z3MaxSat`) | |
+| MaxSAT | ✅ (`MaxSatSolver`) | ✅ (`Z3MaxSatSolver`) | |
 | Modal / LTL / finite-sets / finite-groups | ✅ | ✅ (`ISatSolver` seam) | pass a `Z3SatSolver` to the facade; Z3 backs the SAT |
-| Fuzzy (Gödel / Łukasiewicz) | ✅ | ✅ (`FuzzyEncoder` → `Z3Smt`) | the reduction to LRA is public |
-| Bit-vectors (QF_BV) | ❌ | ✅ (`Z3Sorted` + `SortedExpr`) | fixed-width; arithmetic, bitwise, shifts, concat/extract, signed+unsigned compare |
-| Nonlinear arithmetic (NIA / NRA) | ❌ | ✅ (`Z3Sorted` + `SortedExpr`) | Int/Real sorts with `var·var`; the native engine is linear-only |
+| Fuzzy (Gödel / Łukasiewicz) | ✅ | ✅ (`FuzzyEncoder` → `Z3SmtSolver`) | the reduction to LRA is public |
+| Bit-vectors (QF_BV) | ❌ | ✅ (`Z3SortedSolver` + `SortedExpr`) | fixed-width; arithmetic, bitwise, shifts, concat/extract, signed+unsigned compare |
+| Nonlinear arithmetic (NIA / NRA) | ❌ | ✅ (`Z3SortedSolver` + `SortedExpr`) | Int/Real sorts with `var·var`; the native engine is linear-only |
 | Quantifiers (∀ / ∃) | ❌ | ✅ (`SortedExpr.ForAll`/`Exists`) | full SMT; may return `Unknown` for hard fragments |
-| Strings / sequences | ❌ | ✅ (`Z3Sorted` + `SortedExpr`) | length, concat, contains / prefix / suffix; solve for unknown strings |
+| Strings / sequences | ❌ | ✅ (`Z3SortedSolver` + `SortedExpr`) | length, concat, contains / prefix / suffix; solve for unknown strings |
 | CTL model checking | ✅ | — | explicit-state; not an SMT query |
 | Model counting / weighted counting / PSAT | ✅ | — | Z3 is a solver, not a #SAT counter |
 | First-order theorem proving (resolution + proofs) | ✅ | — | Z3 quantifiers are incomplete for validity |
@@ -203,7 +203,7 @@ using DeepSigma.LogicEngine.Smt;
 using DeepSigma.LogicEngine.Z3;
 
 // Complete, unbounded integers — the native LIA box would miss this.
-var r = Z3Smt.Solve(LraParser.Parse("x = 100000"), Z3SmtTheory.Lia, new[] { "x" });
+var r = Z3SmtSolver.Solve(LraParser.Parse("x = 100000"), Z3SmtTheory.Lia, new[] { "x" });
 Console.WriteLine($"{r.Status}, x = {r.Model!["x"]}");   // Satisfiable, x = 100000
 
 // Encoder logics ride Z3 through the existing ISatSolver seam — just pass a Z3SatSolver.
@@ -213,12 +213,12 @@ bool valid = ModalSolver.IsValid(ModalParser.Parse("[]p -> p"), ModalSystem.T, n
 // Bit-vectors (Z3-only) — 8-bit overflow wraps around.
 using DeepSigma.LogicEngine.Z3.Sorted;
 var x = SortedExpr.BitVecVar("x", 8);
-var bv = Z3Sorted.Solve(SortedExpr.Eq(x + SortedExpr.BitVec(1, 8), SortedExpr.BitVec(0, 8)));
+var bv = Z3SortedSolver.Solve(SortedExpr.Eq(x + SortedExpr.BitVec(1, 8), SortedExpr.BitVec(0, 8)));
 Console.WriteLine($"{bv.Status}, x = {bv.Model!["x"]}");   // Satisfiable, x = 255
 
 // …or write the same sorted theories as text. A declaration prefix gives each variable its sort.
-var same = Z3Sorted.Solve(SortedExpr.Parse("bv8 x; x + 1 == 0"));         // x = 255
-bool ok = Z3Sorted.IsValid(SortedExpr.Parse("forall int n . n + 1 > n")); // True
+var same = Z3SortedSolver.Solve(SortedExpr.Parse("bv8 x; x + 1 == 0"));         // x = 255
+bool ok = Z3SortedSolver.IsValid(SortedExpr.Parse("forall int n . n + 1 > n")); // True
 ```
 
 The sorted-layer text syntax (`Z3SortedParser` / `SortedExpr.Parse`) opens with a declaration

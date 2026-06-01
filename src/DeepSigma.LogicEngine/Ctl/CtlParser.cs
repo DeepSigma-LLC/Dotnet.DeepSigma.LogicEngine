@@ -11,13 +11,7 @@ namespace DeepSigma.LogicEngine.Ctl;
 /// </summary>
 public static class CtlParser
 {
-    public static CtlFormula Parse(string source)
-    {
-        var state = new State(Tokenize(source));
-        var formula = state.ParseFormula();
-        state.Expect(Kind.End);
-        return formula;
-    }
+    public static CtlFormula Parse(string source) => new State(Tokenize(source)).ParseComplete();
 
     public static bool TryParse(string source, out CtlFormula formula)
     {
@@ -66,34 +60,18 @@ public static class CtlParser
         return tokens;
     }
 
-    private sealed class State
+    private sealed class State : TokenReader<Token, Kind>
     {
         private static readonly HashSet<string> UnaryOps = new(StringComparer.Ordinal) { "EX", "EG", "EF", "AX", "AF", "AG" };
 
-        private readonly List<Token> _tokens;
-        private int _pos;
+        public State(List<Token> tokens) : base(tokens, t => t.Kind, t => t.Text) { }
 
-        public State(List<Token> tokens) => _tokens = tokens;
-
-        private Token Peek => _tokens[_pos];
-
-        private Token Advance() => _tokens[_pos++];
-
-        private bool Accept(Kind kind)
+        public CtlFormula ParseComplete()
         {
-            if (Peek.Kind == kind) { _pos++; return true; }
-            return false;
+            var formula = ParseIff();
+            Expect(Kind.End);
+            return formula;
         }
-
-        public void Expect(Kind kind)
-        {
-            if (!Accept(kind))
-            {
-                throw new FormatException($"Expected {kind} but found '{Peek.Text}'.");
-            }
-        }
-
-        public CtlFormula ParseFormula() => ParseIff();
 
         private CtlFormula ParseIff() => ConnectiveChain.LeftAssoc(ParseImplies, () => Accept(Kind.Iff), (l, r) => new CtlIff(l, r));
         private CtlFormula ParseImplies() => ConnectiveChain.RightAssoc(ParseOr, () => Accept(Kind.Implies), ParseImplies, (l, r) => new CtlImplies(l, r));
@@ -106,7 +84,7 @@ public static class CtlParser
             {
                 return new CtlNot(ParseUnary());
             }
-            if (Peek.Kind == Kind.Id && UnaryOps.Contains(Peek.Text))
+            if (PeekKind() == Kind.Id && UnaryOps.Contains(Peek().Text))
             {
                 var op = Advance().Text;
                 var operand = ParseUnary();
@@ -120,7 +98,7 @@ public static class CtlParser
                     _ => new CtlAF(operand),
                 };
             }
-            if (Peek.Kind == Kind.Id && (Peek.Text == "E" || Peek.Text == "A"))
+            if (PeekKind() == Kind.Id && (Peek().Text == "E" || Peek().Text == "A"))
             {
                 var path = Advance().Text;
                 Expect(Kind.LBracket);
@@ -141,7 +119,7 @@ public static class CtlParser
                 Expect(Kind.RParen);
                 return inner;
             }
-            if (Peek.Kind == Kind.Id)
+            if (PeekKind() == Kind.Id)
             {
                 var text = Advance().Text;
                 return text switch
@@ -151,16 +129,16 @@ public static class CtlParser
                     _ => new CtlAtom(text),
                 };
             }
-            throw new FormatException($"Expected a formula but found '{Peek.Text}'.");
+            throw new FormatException($"Expected a formula but found '{Peek().Text}'.");
         }
 
         private void ExpectKeyword(string keyword)
         {
-            if (Peek.Kind != Kind.Id || Peek.Text != keyword)
+            if (PeekKind() != Kind.Id || Peek().Text != keyword)
             {
-                throw new FormatException($"Expected '{keyword}' but found '{Peek.Text}'.");
+                throw new FormatException($"Expected '{keyword}' but found '{Peek().Text}'.");
             }
-            _pos++;
+            Advance();
         }
     }
 }

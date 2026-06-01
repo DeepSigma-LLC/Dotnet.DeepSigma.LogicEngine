@@ -1,3 +1,4 @@
+using DeepSigma.LogicEngine.Common;
 using DeepSigma.LogicEngine.Encoding;
 using DeepSigma.LogicEngine.Formulas;
 using DeepSigma.LogicEngine.Reasoning;
@@ -34,16 +35,12 @@ public static class BoundedModelChecker
     {
         var nnf = formula.ToNnf();
         var atoms = formula.Atoms();
-        for (var k = 0; k <= maxBound; k++)
+        var hit = BoundedSearch.FirstNonNull(0, maxBound, k =>
         {
-            var encoding = Encode(nnf, k, transitionSystem: null);
-            var model = Reasoner.FindModel(encoding);
-            if (model is not null)
-            {
-                return new LtlBmcResult(true, k, ExtractTrace(model, atoms, k));
-            }
-        }
-        return new LtlBmcResult(false, maxBound, null);
+            var model = Reasoner.FindModel(Encode(nnf, k, transitionSystem: null));
+            return model is null ? null : new LtlBmcResult(true, k, ExtractTrace(model, atoms, k));
+        });
+        return hit ?? new LtlBmcResult(false, maxBound, null);
     }
 
     /// <summary>
@@ -60,16 +57,11 @@ public static class BoundedModelChecker
         var negated = new LtlNot(property).ToNnf();
         var atoms = new HashSet<string>(system.StateVariables, StringComparer.Ordinal);
         atoms.UnionWith(property.Atoms());
-        for (var k = 0; k <= maxBound; k++)
+        return BoundedSearch.FirstNonNull(0, maxBound, k =>
         {
-            var encoding = Encode(negated, k, system);
-            var model = Reasoner.FindModel(encoding);
-            if (model is not null)
-            {
-                return ExtractTrace(model, atoms, k);
-            }
-        }
-        return null;
+            var model = Reasoner.FindModel(Encode(negated, k, system));
+            return model is null ? null : ExtractTrace(model, atoms, k);
+        });
     }
 
     /// <summary>As <see cref="CheckSatisfiable(LtlFormula, int)"/>, but solving each bounded encoding with the supplied engine (e.g. a Z3-backed <see cref="ISatSolver"/>).</summary>
@@ -80,15 +72,12 @@ public static class BoundedModelChecker
     {
         var nnf = formula.ToNnf();
         var atoms = formula.Atoms();
-        for (var k = 0; k <= maxBound; k++)
+        var hit = BoundedSearch.FirstNonNull(0, maxBound, k =>
         {
             var model = Reasoner.FindModel(Encode(nnf, k, transitionSystem: null), solver);
-            if (model is not null)
-            {
-                return new LtlBmcResult(true, k, ExtractTrace(model, atoms, k));
-            }
-        }
-        return new LtlBmcResult(false, maxBound, null);
+            return model is null ? null : new LtlBmcResult(true, k, ExtractTrace(model, atoms, k));
+        });
+        return hit ?? new LtlBmcResult(false, maxBound, null);
     }
 
     /// <summary>As <see cref="FindCounterexample(TransitionSystem, LtlFormula, int)"/>, but solving with the supplied engine.</summary>
@@ -101,15 +90,11 @@ public static class BoundedModelChecker
         var negated = new LtlNot(property).ToNnf();
         var atoms = new HashSet<string>(system.StateVariables, StringComparer.Ordinal);
         atoms.UnionWith(property.Atoms());
-        for (var k = 0; k <= maxBound; k++)
+        return BoundedSearch.FirstNonNull(0, maxBound, k =>
         {
             var model = Reasoner.FindModel(Encode(negated, k, system), solver);
-            if (model is not null)
-            {
-                return ExtractTrace(model, atoms, k);
-            }
-        }
-        return null;
+            return model is null ? null : ExtractTrace(model, atoms, k);
+        });
     }
 
     // --- encoding ---------------------------------------------------------

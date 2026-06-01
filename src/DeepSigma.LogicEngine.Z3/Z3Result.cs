@@ -25,19 +25,35 @@ public enum Z3Status
 /// <summary>The kind of a model value, so callers can read it without parsing <see cref="Z3Value.Text"/>.</summary>
 public enum Z3ValueKind
 {
+    /// <summary>A boolean value (read it from <see cref="Z3Value.Boolean"/>).</summary>
     Boolean,
+
+    /// <summary>An integer value, including bit-vector values (read it from <see cref="Z3Value.Integer"/>).</summary>
     Integer,
+
+    /// <summary>An exact rational value (read it from <see cref="Z3Value.Rational"/>).</summary>
     Rational,
+
+    /// <summary>Any other sort (e.g. a string or uninterpreted constant); inspect <see cref="Z3Value.Text"/>.</summary>
     Other,
 }
 
 /// <summary>A single variable's value in a <see cref="Z3Model"/>. <see cref="Text"/> is always Z3's printed form.</summary>
 public sealed class Z3Value
 {
+    /// <summary>Which typed accessor below carries the value.</summary>
     public Z3ValueKind Kind { get; }
+
+    /// <summary>Z3's printed form of the value — always populated, for any sort.</summary>
     public string Text { get; }
+
+    /// <summary>The boolean value when <see cref="Kind"/> is <see cref="Z3ValueKind.Boolean"/>; otherwise null.</summary>
     public bool? Boolean { get; }
+
+    /// <summary>The integer (or bit-vector) value when <see cref="Kind"/> is <see cref="Z3ValueKind.Integer"/>; otherwise null.</summary>
     public BigInteger? Integer { get; }
+
+    /// <summary>The exact rational value when <see cref="Kind"/> is <see cref="Z3ValueKind.Rational"/>; otherwise null.</summary>
     public Rational? Rational { get; }
 
     internal Z3Value(Z3ValueKind kind, string text, bool? boolean = null, BigInteger? integer = null, Rational? rational = null)
@@ -49,6 +65,7 @@ public sealed class Z3Value
         Rational = rational;
     }
 
+    /// <summary>Returns <see cref="Text"/>, Z3's printed form of the value.</summary>
     public override string ToString() => Text;
 }
 
@@ -68,6 +85,7 @@ public sealed class Z3Model
     /// <summary>The value of <paramref name="name"/>, or null if it was not assigned.</summary>
     public Z3Value? this[string name] => _values.TryGetValue(name, out var v) ? v : null;
 
+    /// <summary>A readable <c>{ name=value, … }</c> rendering of the assignment (names sorted).</summary>
     public override string ToString()
     {
         if (_values.Count == 0)
@@ -84,7 +102,10 @@ public sealed class Z3Model
 /// <summary>The result of a Z3 query: a <see cref="Z3Status"/> and, when satisfiable, a <see cref="Z3Model"/>.</summary>
 public sealed class Z3Result
 {
+    /// <summary>The tri-valued outcome of the solve.</summary>
     public Z3Status Status { get; }
+
+    /// <summary>The satisfying assignment when <see cref="Status"/> is <see cref="Z3Status.Satisfiable"/>; otherwise null.</summary>
     public Z3Model? Model { get; }
 
     internal Z3Result(Z3Status status, Z3Model? model)
@@ -102,5 +123,6 @@ public sealed class Z3Result
     /// <summary>True when Z3 did not decide the query.</summary>
     public bool IsUnknown => Status == Z3Status.Unknown;
 
+    /// <summary>The status, plus the model when satisfiable.</summary>
     public override string ToString() => Model is null ? Status.ToString() : $"{Status} {Model}";
 }

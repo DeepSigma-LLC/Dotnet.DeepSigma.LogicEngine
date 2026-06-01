@@ -9,7 +9,7 @@ namespace DeepSigma.LogicEngine.Z3;
 /// all, so Z3 is the only backend. Returns a tri-valued <see cref="Z3Result"/>; a satisfying model
 /// exposes each bit-vector value as an (unsigned) integer.
 /// </summary>
-public static class Z3Sorted
+public static class Z3SortedSolver
 {
     /// <summary>Solve a boolean-sorted constraint, returning satisfiability and (when SAT) a model.</summary>
     public static Z3Result Solve(SortedExpr constraint, CancellationToken cancellationToken = default, TimeSpan? timeout = null)
@@ -29,7 +29,18 @@ public static class Z3Sorted
     public static bool IsSatisfiable(SortedExpr constraint, CancellationToken cancellationToken = default, TimeSpan? timeout = null)
         => Solve(constraint, cancellationToken, timeout).IsSatisfiable;
 
+    /// <summary>True if the constraint is unsatisfiable. (Unknown reports false.)</summary>
+    public static bool IsUnsatisfiable(SortedExpr constraint, CancellationToken cancellationToken = default, TimeSpan? timeout = null)
+        => Solve(constraint, cancellationToken, timeout).IsUnsatisfiable;
+
     /// <summary>True if the constraint holds for every assignment (its negation is unsatisfiable).</summary>
     public static bool IsValid(SortedExpr constraint, CancellationToken cancellationToken = default, TimeSpan? timeout = null)
         => Solve(SortedExpr.Not(constraint), cancellationToken, timeout).IsUnsatisfiable;
+
+    /// <summary>
+    /// True if the knowledge base entails the query — i.e. every model of the (boolean-sorted)
+    /// premises is a model of the query (their conjunction with the negated query is unsatisfiable).
+    /// </summary>
+    public static bool Entails(IEnumerable<SortedExpr> knowledgeBase, SortedExpr query, CancellationToken cancellationToken = default, TimeSpan? timeout = null)
+        => Solve(SortedExpr.And(SortedExpr.All(knowledgeBase), SortedExpr.Not(query)), cancellationToken, timeout).IsUnsatisfiable;
 }

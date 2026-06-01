@@ -12,8 +12,12 @@ public sealed record Z3MaxSatResult(Z3Status Status, Z3Model? Model, long Cost);
 /// hard clause that minimizes the total weight of unsatisfied soft clauses. Mirrors the native
 /// <see cref="MaxSatSolver"/>'s inputs.
 /// </summary>
-public static class Z3MaxSat
+public static class Z3MaxSatSolver
 {
+    /// <summary>
+    /// Find an assignment satisfying every hard clause that minimizes the total weight of unsatisfied
+    /// soft clauses. The result's <c>Cost</c> is that minimum weight (0 when all soft clauses hold).
+    /// </summary>
     public static Z3MaxSatResult Solve(
         IEnumerable<IReadOnlyList<Literal>> hardClauses,
         IEnumerable<SoftClause> softClauses,
@@ -24,15 +28,10 @@ public static class Z3MaxSat
         var hard = hardClauses.ToList();
         var soft = softClauses.ToList();
 
-        using var ctx = new MZ3.Context();
-        var optimize = ctx.MkOptimize();
-        if (timeout is { } t)
-        {
-            optimize.Set("timeout", (uint)Math.Clamp(t.TotalMilliseconds, 0, uint.MaxValue));
-        }
-        using var registration = cancellationToken.CanBeCanceled
-            ? cancellationToken.Register(static state => ((MZ3.Context)state!).Interrupt(), ctx)
-            : default;
+        // Z3Session owns the Context, applies the timeout to the optimizer, and wires cancellation.
+        using var session = new Z3Session(timeout, cancellationToken);
+        var ctx = session.Context;
+        var optimize = session.Optimize;
 
         var constants = new Dictionary<string, MZ3.BoolExpr>(StringComparer.Ordinal);
         MZ3.BoolExpr Var(string name)

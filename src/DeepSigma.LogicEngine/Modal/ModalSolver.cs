@@ -1,3 +1,4 @@
+using DeepSigma.LogicEngine.Common;
 using DeepSigma.LogicEngine.Formulas;
 using DeepSigma.LogicEngine.Reasoning;
 using DeepSigma.LogicEngine.Solvers;
@@ -45,16 +46,7 @@ public static class ModalSolver
     /// <param name="system">The modal system whose frame conditions the constructed model must satisfy.</param>
     /// <param name="maxWorlds">Largest Kripke model (in worlds) to try. A satisfiable result is sound; "not satisfiable up to maxWorlds" relies on the finite-model property within this bound, not a general proof of unsatisfiability.</param>
     public static bool IsSatisfiable(ModalFormula formula, ModalSystem system, int maxWorlds = DefaultMaxWorlds)
-    {
-        for (var n = 1; n <= maxWorlds; n++)
-        {
-            if (Reasoner.IsSatisfiable(EncodeAt(formula, system, n)))
-            {
-                return true;
-            }
-        }
-        return false;
-    }
+        => BoundedSearch.Any(1, maxWorlds, n => Reasoner.IsSatisfiable(EncodeAt(formula, system, n)));
 
     /// <summary>True if the formula is valid in the system (its negation has no model up to <paramref name="maxWorlds"/>).</summary>
     /// <param name="formula">The modal formula to test for validity.</param>
@@ -69,16 +61,7 @@ public static class ModalSolver
     /// <param name="solver">The SAT engine to solve each bounded encoding with.</param>
     /// <param name="maxWorlds">Largest Kripke model (in worlds) to try; the bound semantics are unchanged.</param>
     public static bool IsSatisfiable(ModalFormula formula, ModalSystem system, ISatSolver solver, int maxWorlds = DefaultMaxWorlds)
-    {
-        for (var n = 1; n <= maxWorlds; n++)
-        {
-            if (Reasoner.IsSatisfiable(EncodeAt(formula, system, n), solver))
-            {
-                return true;
-            }
-        }
-        return false;
-    }
+        => BoundedSearch.Any(1, maxWorlds, n => Reasoner.IsSatisfiable(EncodeAt(formula, system, n), solver));
 
     /// <summary>As <see cref="IsValid(ModalFormula, ModalSystem, int)"/>, but solving with the supplied engine.</summary>
     /// <param name="formula">The modal formula to test for validity.</param>

@@ -11,7 +11,7 @@ namespace DeepSigma.LogicEngine.Z3.Tests;
 /// <summary>
 /// The encoder logics (modal, LTL, finite-sets, finite-groups) run on Z3 by passing a
 /// <see cref="Z3SatSolver"/> through the existing <c>ISatSolver</c> overloads — no internals
-/// exposed. Fuzzy routes through the public <see cref="FuzzyEncoder"/> solved by <see cref="Z3Smt"/>.
+/// exposed. Fuzzy routes through the public <see cref="FuzzyEncoder"/> solved by <see cref="Z3SmtSolver"/>.
 /// Each must agree with the native engine.
 /// </summary>
 public class Z3EncoderLogicsTests
@@ -67,7 +67,7 @@ public class Z3EncoderLogicsTests
         foreach (var logic in new[] { FuzzyLogic.Lukasiewicz, FuzzyLogic.Godel })
         {
             var nativeValid = FuzzySolver.IsValid(em, logic);
-            var z3Valid = !Z3Smt.IsSatisfiable(FuzzyEncoder.ValidityCounterexampleQuery(em, logic), Z3SmtTheory.Lra);
+            var z3Valid = !Z3SmtSolver.IsSatisfiable(FuzzyEncoder.ValidityCounterexampleQuery(em, logic), Z3SmtTheory.Lra);
             Assert.Equal(nativeValid, z3Valid);
         }
     }

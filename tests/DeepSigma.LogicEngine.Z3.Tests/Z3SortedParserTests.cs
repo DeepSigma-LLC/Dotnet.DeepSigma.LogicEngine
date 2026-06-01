@@ -18,7 +18,7 @@ public class Z3SortedParserTests
     [Fact]
     public void Parse_BitVectorOverflow_SolvesToMax()
     {
-        var result = Z3Sorted.Solve(SortedExpr.Parse("bv8 x; x + 1 == 0"));
+        var result = Z3SortedSolver.Solve(SortedExpr.Parse("bv8 x; x + 1 == 0"));
         Assert.True(result.IsSatisfiable);
         Assert.Equal((BigInteger)255, result.Model!["x"]!.Integer);
     }
@@ -26,7 +26,7 @@ public class Z3SortedParserTests
     [Fact]
     public void Parse_BitVectorLiteralHex_Solves()
     {
-        var result = Z3Sorted.Solve(SortedExpr.Parse("bv8 x; x == #xFF"));
+        var result = Z3SortedSolver.Solve(SortedExpr.Parse("bv8 x; x == #xFF"));
         Assert.True(result.IsSatisfiable);
         Assert.Equal((BigInteger)255, result.Model!["x"]!.Integer);
     }
@@ -34,10 +34,10 @@ public class Z3SortedParserTests
     [Fact]
     public void Parse_BitVectorFunctions_AreValid()
     {
-        Assert.True(Z3Sorted.IsValid(SortedExpr.Parse("bv8 x; bvand(x, x) == x")));
-        Assert.True(Z3Sorted.IsValid(SortedExpr.Parse("bv8 x; ~(~x) == x")));
-        Assert.True(Z3Sorted.IsValid(SortedExpr.Parse("bv8 x; extract(7, 0, concat(x, x)) == x")));
-        Assert.True(Z3Sorted.IsValid(SortedExpr.Parse("bv8 x; slt(#xFF, #x00)")));   // -1 < 0 signed
+        Assert.True(Z3SortedSolver.IsValid(SortedExpr.Parse("bv8 x; bvand(x, x) == x")));
+        Assert.True(Z3SortedSolver.IsValid(SortedExpr.Parse("bv8 x; ~(~x) == x")));
+        Assert.True(Z3SortedSolver.IsValid(SortedExpr.Parse("bv8 x; extract(7, 0, concat(x, x)) == x")));
+        Assert.True(Z3SortedSolver.IsValid(SortedExpr.Parse("bv8 x; slt(#xFF, #x00)")));   // -1 < 0 signed
     }
 
     // --- parse then solve: arithmetic, quantifiers, strings ---
@@ -45,7 +45,7 @@ public class Z3SortedParserTests
     [Fact]
     public void Parse_NonlinearArithmetic_FindsRoot()
     {
-        var result = Z3Sorted.Solve(SortedExpr.Parse("int n; n * n == 49 & n > 0"));
+        var result = Z3SortedSolver.Solve(SortedExpr.Parse("int n; n * n == 49 & n > 0"));
         Assert.True(result.IsSatisfiable);
         Assert.Equal((BigInteger)7, result.Model!["n"]!.Integer);
     }
@@ -53,7 +53,7 @@ public class Z3SortedParserTests
     [Fact]
     public void Parse_RealArithmetic_ExactModel()
     {
-        var result = Z3Sorted.Solve(SortedExpr.Parse("real x; 2*x == 1"));
+        var result = Z3SortedSolver.Solve(SortedExpr.Parse("real x; 2*x == 1"));
         Assert.True(result.IsSatisfiable);
         Assert.Equal(Rational.Of(1, 2), result.Model!["x"]!.Rational);
     }
@@ -61,25 +61,25 @@ public class Z3SortedParserTests
     [Fact]
     public void Parse_Quantifiers_DecideValidity()
     {
-        Assert.True(Z3Sorted.IsValid(SortedExpr.Parse("forall int n . n + 1 > n")));
-        Assert.False(Z3Sorted.IsValid(SortedExpr.Parse("forall int n . n > 0")));
-        Assert.True(Z3Sorted.IsValid(SortedExpr.Parse("forall int x, int y . x + y == y + x")));
-        Assert.True(Z3Sorted.IsSatisfiable(SortedExpr.Parse("exists int x . 2*x == 10")));
+        Assert.True(Z3SortedSolver.IsValid(SortedExpr.Parse("forall int n . n + 1 > n")));
+        Assert.False(Z3SortedSolver.IsValid(SortedExpr.Parse("forall int n . n > 0")));
+        Assert.True(Z3SortedSolver.IsValid(SortedExpr.Parse("forall int x, int y . x + y == y + x")));
+        Assert.True(Z3SortedSolver.IsSatisfiable(SortedExpr.Parse("exists int x . 2*x == 10")));
     }
 
     [Fact]
     public void Parse_Strings_Solve()
     {
-        Assert.True(Z3Sorted.IsValid(SortedExpr.Parse("\"foo\" ++ \"bar\" == \"foobar\"")));
-        Assert.True(Z3Sorted.IsValid(SortedExpr.Parse("contains(\"foobar\", \"oob\")")));
-        Assert.True(Z3Sorted.IsSatisfiable(SortedExpr.Parse("string s; s ++ \"bar\" == \"foobar\" & |s| == 3")));
+        Assert.True(Z3SortedSolver.IsValid(SortedExpr.Parse("\"foo\" ++ \"bar\" == \"foobar\"")));
+        Assert.True(Z3SortedSolver.IsValid(SortedExpr.Parse("contains(\"foobar\", \"oob\")")));
+        Assert.True(Z3SortedSolver.IsSatisfiable(SortedExpr.Parse("string s; s ++ \"bar\" == \"foobar\" & |s| == 3")));
     }
 
     [Fact]
     public void Parse_LiteralFirst_InfersSort()
     {
         // The literal appears before the variable, so its sort must be inferred from the sibling.
-        var result = Z3Sorted.Solve(SortedExpr.Parse("bv8 x; 1 + x == 0"));
+        var result = Z3SortedSolver.Solve(SortedExpr.Parse("bv8 x; 1 + x == 0"));
         Assert.True(result.IsSatisfiable);
         Assert.Equal((BigInteger)255, result.Model!["x"]!.Integer);
     }

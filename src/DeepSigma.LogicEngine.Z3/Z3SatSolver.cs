@@ -14,10 +14,17 @@ namespace DeepSigma.LogicEngine.Z3;
 /// </summary>
 public sealed class Z3SatSolver : ISatSolver
 {
+    /// <summary>
+    /// Solves the CNF formula with Z3 and returns a <see cref="SatResult"/> (a satisfying
+    /// <see cref="Model"/> when SAT). Throws <see cref="InvalidOperationException"/> in the
+    /// theoretically-shouldn't-happen case that Z3 reports UNKNOWN for a purely propositional query.
+    /// </summary>
     public SatResult Solve(CnfFormula formula)
     {
-        using var context = new MZ3.Context();
-        using var solver = context.MkSolver();
+        // ISatSolver has no timeout/cancellation; reuse Z3Session purely for Context/Solver lifetime.
+        using var session = new Z3Session(timeout: null, cancellationToken: default);
+        var context = session.Context;
+        var solver = session.Solver;
 
         var constants = new Dictionary<string, MZ3.BoolExpr>(StringComparer.Ordinal);
         MZ3.BoolExpr Var(string name)

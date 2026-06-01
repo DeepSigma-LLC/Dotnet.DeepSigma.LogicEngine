@@ -7,7 +7,7 @@ namespace DeepSigma.LogicEngine.Z3.Sorted;
 /// Prints a <see cref="SortedExpr"/> back into the textual syntax accepted by
 /// <see cref="Z3SortedParser"/>. The output begins with a declaration prefix for the free
 /// variables, so <c>Z3SortedParser.Parse(Z3SortedPrinter.Print(e))</c> round-trips to an
-/// expression structurally equal to <paramref name="e"/>.
+/// expression structurally equal to <c>e</c>.
 /// </summary>
 internal static class Z3SortedPrinter
 {
