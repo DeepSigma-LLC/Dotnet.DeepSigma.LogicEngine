@@ -192,11 +192,13 @@ MaxSAT. It is MIT-licensed.
 | Fuzzy (Gödel / Łukasiewicz) | ✅ | ✅ (`FuzzyEncoder` → `Z3SmtReasoner`) | the reduction to LRA is public |
 | Bit-vectors (QF_BV) | ❌ | ✅ (`Z3SortedSolver` + `SortedExpr`) | fixed-width; arithmetic, bitwise, shifts, concat/extract, signed+unsigned compare |
 | Nonlinear arithmetic (NIA / NRA) | ❌ | ✅ (`Z3SortedSolver` + `SortedExpr`) | Int/Real sorts with `var·var`; the native engine is linear-only |
-| Quantifiers (∀ / ∃) | ❌ | ✅ (`SortedExpr.ForAll`/`Exists`) | full SMT; may return `Unknown` for hard fragments |
+| Quantifiers (∀ / ∃) in SMT | ❌ | ✅ (`SortedExpr.ForAll`/`Exists`) | ∀/∃ over Z3's theories (quantified SMT); sound but incomplete — may return `Unknown`. This is *not* a first-order theorem prover (see the FOL row). |
 | Strings / sequences | ❌ | ✅ (`Z3SortedSolver` + `SortedExpr`) | length, concat, contains / prefix / suffix; solve for unknown strings |
 | CTL model checking | ✅ | — | explicit-state; not an SMT query |
 | Model counting / weighted counting / PSAT | ✅ | — | Z3 is a solver, not a #SAT counter |
-| First-order theorem proving (resolution + proofs) | ✅ | — | Z3 quantifiers are incomplete for validity |
+| First-order theorem proving (resolution + proofs) | ✅ | — | The native prover emits a resolution **proof** and is refutation-complete for first-order validity. Z3's quantifier instantiation is heuristic (no proof, may answer `Unknown`), so this stays native. |
+
+> **Quantifiers vs. the FOL prover.** These two rows are different things. The *Quantifiers* row lets you put ∀/∃ into an SMT problem (e.g. `∀x. x + 1 > x` over integers) and ask Z3 to decide it — handy modeling, but Z3 may answer `Unknown`. The *first-order theorem proving* row is a dedicated prover for pure first-order logic that returns a refutation **proof** (`Proved` / `Saturated` / `Unknown`); it's a separate, proof-producing decision procedure, not the same thing as having quantifiers in Z3.
 
 ```csharp
 using DeepSigma.LogicEngine.Smt;

@@ -301,8 +301,11 @@ solve, translate the model back — not an `ITheory` plugged into the native DPL
   `InternalsVisibleTo`. Being multi-sorted, its syntax opens with a variable-declaration prefix
   (`bv8 x;`, `int n;`, …) that the single-sorted core front-ends never need.
 - **Deliberately native-only:** CTL (explicit-state fixpoint, not an SMT query), model
-  counting/PSAT (Z3 isn't a #SAT counter), and the FOL resolution prover (Z3 quantifiers are
-  incomplete for validity and emit no resolution proofs).
+  counting/PSAT (Z3 isn't a #SAT counter), and the FOL resolution prover. Note this is *not* the
+  same as the Z3-only **quantifiers** capability: that lets you put ∀/∃ into an SMT problem and
+  have Z3 decide it (sound but incomplete — may answer `Unknown`). The FOL prover is a separate
+  deliverable — a refutation-complete procedure for pure first-order validity that emits a
+  resolution **proof**; Z3's heuristic quantifier instantiation produces neither, so it stays native.
 - **Differential oracle.** `tests/DeepSigma.LogicEngine.Z3.Tests/` cross-checks the two engines on
   the shared fragment — any disagreement is a real bug in one of them. The native test project
   stays `libz3`-free.
